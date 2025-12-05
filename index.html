@@ -7,16 +7,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        /* ... (Il tuo CSS rimane qui, invariato) ... */
         :root {
             /* Nuovi Colori Gradiente */
             --gradient-start: #00796B; 
             --gradient-mid: #03A9F4;  
             --gradient-end-dark: #004488;  
-            --gradient-end-accent: #9C27B0; /* Viola */
+            --gradient-end-accent: #9C27B0; 
             /* Colori Interfaccia */
-            --primary-blue: #2196F3; /* Card e Nome Voto */
-            --secondary-button: #00BCD4; /* Turchese/Azzurro Acceso */
+            --primary-blue: #2196F3; 
+            --secondary-button: #00BCD4; 
             --danger-color: #EF5350;
             --rank-color: #9C27B0; 
             --avg-color: #00BCD4; 
@@ -26,14 +25,61 @@
             --text-color-light: white;
             --text-color-dark: #333;
         }
-        /* ... (continua il tuo CSS) ... */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 40%, var(--gradient-end-dark) 70%, var(--gradient-end-accent) 100%);
+            color: var(--text-color-dark);
+            padding: 0;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .main-view {
+            width: 90%;
+            max-width: 600px;
+            margin-top: 30px;
+            position: relative;
+        }
+        h1 {
+            color: var(--text-color-light); 
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 800;
+        }
+        /* ... (CSS omesso per brevità) ... */
+        #addBtn {
+            position: fixed;
+            top: 25px;
+            right: 25px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: var(--secondary-button); 
+            color: white;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            transition: background-color 0.3s, transform 0.2s;
+            z-index: 10;
+        }
+        #addBtn:hover {
+            background-color: #008C9E;
+            transform: scale(1.05);
+        }
+        /* ... (Tutto il resto del CSS) ... */
+        .remove-btn:hover { opacity: 1; }
+        #resetClassificaBtn:hover {
+            background-color: rgba(239, 83, 80, 0.1);
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, writeBatch, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js';
-
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script>
         // Configurazione Firebase: I TUOI DATI INSERITI QUI
         const firebaseConfig = {
             apiKey: "AIzaSyA-i-_8qSYx_NTBRkjYho3q0msA67P7P7g",
@@ -44,25 +90,54 @@
             appId: "1:310518525910:web:b52785433524c4619a7e77"
         };
 
-        // Inizializzazione Firebase
-        const app = initializeApp(firebaseConfig);
-        
-        // Rende le funzioni e le variabili globali (window)
-        window.db = getFirestore(app); 
+        // Inizializzazione globale
+        const app = firebase.initializeApp(firebaseConfig);
+        window.db = app.firestore();
         window.VOTI_COLLECTION = "voti"; 
-        
-        // Espone le funzioni Firestore necessarie per script.js
-        window.firestore_collection = collection; 
-        window.firestore_getDocs = getDocs; 
-        window.firestore_writeBatch = writeBatch;
-        window.firestore_serverTimestamp = serverTimestamp;
         
         // Questo evento è per segnalare a script.js che il database è pronto
         window.dispatchEvent(new Event('firebaseReady'));
     </script>
     </head>
 <body>
+
+    <div class="main-view" id="main-view">
+        <h1>LISTA CONCORRENTI</h1>
+        
+        <div id="listaPartecipanti">
+            </div>
+    </div>
     
+    <button id="addBtn" onclick="apriModaleInserimento()">
+        <i class="fa-solid fa-plus"></i>
+    </button>
+    
+    <button id="classificaBtn" onclick="calcolaMediaEVaiAllaClassifica()">
+        Vai alla Classifica
+    </button>
+    
+    <div id="inputModal" class="modal" onclick="chiudiModale(event, 'inputModal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h2>Aggiungi Partecipante</h2>
+            <input type="text" id="modalNomeInput" placeholder="Inserisci nome">
+            <button onclick="salvaNomeDaModale()">Salva</button>
+        </div>
+    </div>
+    
+    <div id="qrModal" class="modal" onclick="chiudiModale(event, 'qrModal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h2 id="modalNomeQr"></h2>
+            <p style="margin-bottom: 20px;">Scansiona il codice per votare:</p>
+            <canvas id="modalQrCanvas" style="max-width: 100%; height: auto;"></canvas>
+        </div>
+    </div>
+    
+    <div id="classifica-view">
+        <h1>CLASSIFICA FINALE</h1>
+        <ul id="listaClassifica"></ul>
+        <button id="resetClassificaBtn" onclick="resetCompleto()">RESET</button>
+    </div>
+
     <script src="script.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
