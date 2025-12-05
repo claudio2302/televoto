@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Inserisci il tuo Voto</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        h1 { color: #007bff; }
+        input[type="number"] { padding: 10px; font-size: 1.5em; width: 80px; text-align: center; margin-bottom: 20px; }
+        button { padding: 15px 30px; font-size: 1.2em; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #1e7e34; }
+        #messaggio { margin-top: 30px; font-size: 1.1em; }
+        .blocco-voto { display: block; }
+    </style>
+</head>
+<body>
+
+    <h1 id="nomePartecipante"></h1>
+    <div id="bloccoVoto" class="blocco-voto">
+        <h2>Voto da 1 a 10</h2>
+        <input type="number" id="votoInput" min="1" max="10" value="1" required>
+        <button onclick="inviaVoto()">Conferma Voto</button>
+    </div>
+    <p id="messaggio" style="display:none;"></p>
+
+    <script>
+        let nomePartecipante = '';
+        
+        // **!!! DEVI INCOLLARE QUI L'URL API DI SHEETDB.IO !!!**
+        // Questo sarà l'endpoint che riceve i voti e li salva nel tuo Foglio Google.
+        const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/modve7uqqwetx'; 
+
+        // 1. Legge il nome del partecipante dall'URL
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            nomePartecipante = params.get('nome');
+            if (nomePartecipante) {
+                document.getElementById('nomePartecipante').textContent = `Vota per ${decodeURIComponent(nomePartecipante)}`;
+            } else {
+                document.getElementById('nomePartecipante').textContent = 'Errore: Partecipante non identificato.';
+                document.getElementById('bloccoVoto').style.display = 'none';
+            }
+        });
+
+        // 2. Funzione per inviare il voto
+        async function inviaVoto() {
+            const voto = parseInt(document.getElementById('votoInput').value);
+            const messaggioElemento = document.getElementById('messaggio');
+
+            if (isNaN(voto) || voto < 1 || voto > 10) {
+                alert('Inserisci un voto valido tra 1 e 10.');
+                return;
+            }
+            
+            // Dati da inviare a SheetDB. La chiave "nome" e "voto" corrisponde all'intestazione del Foglio Google.
+            const dati = {
+                data: [{
+                    nome: decodeURIComponent(nomePartecipante),
+                    voto: voto
+                }]
+            };
+
+            messaggioElemento.textContent = "Invio del voto in corso...";
+            messaggioElemento.style.display = 'block';
+            
+            try {
+                const response = await fetch(SHEETDB_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(dati)
+                });
+                
+                if (response.ok) {
+                    messaggioElemento.textContent = "Voto registrato con successo! ✅";
+                    messaggioElemento.style.color = 'green';
+                    document.getElementById('bloccoVoto').style.display = 'none';
+                } else {
+                    messaggioElemento.textContent = "Errore durante la registrazione del voto. Riprova più tardi.";
+                    messaggioElemento.style.color = 'red';
+                }
+                
+            } catch (error) {
+                messaggioElemento.textContent = `Errore di connessione. Verifica la tua connessione internet.`;
+                messaggioElemento.style.color = 'red';
+                console.error('Errore nell\'invio del voto:', error);
+            }
+        }
+    </script>
+</body>
+</html>
