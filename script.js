@@ -10,15 +10,50 @@ const IS_TEST_MODE = false;
 // Variabile per l'ID di sessione, generata al caricamento della pagina per distinguere i voti
 const SESSION_ID = Date.now(); 
 const STORAGE_KEY_VISITED = 'televotoVisitedQr'; 
+// Mappa temporanea per i conteggi attuali (Nome: Conteggio)
+let votiCorrenti = {}; 
 
 // --- FUNZIONI DI UTILITÀ ---
 
-// Funzione per capitalizzare la prima lettera di ogni parola
 function capitalizeWords(str) {
     if (!str) return str;
     return str.toLowerCase().split(' ').map(word => {
         return word.charAt(0).toUpperCase() + word.slice(1);
     }).join(' ');
+}
+
+// Funzione per scaricare i voti e aggiornare la mappa votiCorrenti
+async function caricaConteggiVoti() {
+    try {
+        const response = await fetch(SHEETDB_API_URL);
+        if (!response.ok) {
+            console.error(`Errore HTTP ${response.status} durante il conteggio voti.`);
+            return;
+        }
+        
+        const allVoti = await response.json();
+        const conteggi = {};
+        
+        // Inizializza i conteggi per tutti i partecipanti noti
+        for (const nome of Object.keys(partecipanti)) {
+            conteggi[nome] = 0;
+        }
+
+        // Conta i voti ricevuti
+        allVoti.forEach(record => {
+            const nome = record.nome;
+            // Controlla che il nome sia nella lista dei partecipanti attivi
+            if (conteggi.hasOwnProperty(nome)) {
+                conteggi[nome] += 1;
+            }
+        });
+
+        votiCorrenti = conteggi;
+        aggiornaInterfaccia(); // Ridisegna l'interfaccia con i nuovi conteggi
+
+    } catch (error) {
+        console.error("Impossibile caricare i conteggi dei voti:", error);
+    }
 }
 
 // --- FUNZIONI DI GESTIONE ---
@@ -41,7 +76,6 @@ function salvaNomi() {
 
 // 3. Aggiunge un nuovo partecipante dalla modale
 function aggiungiPartecipante(nome) {
-    // Capitalizza automaticamente prima di salvare
     const nomeCapitalizzato = capitalizeWords(nome.trim());
 
     if (!nomeCapitalizzato) {
@@ -52,6 +86,7 @@ function aggiungiPartecipante(nome) {
     if (nomeCapitalizzato && !partecipanti[nomeCapitalizzato]) {
         partecipanti[nomeCapitalizzato] = [];
         salvaNomi();
+        votiCorrenti[nomeCapitalizzato] = 0; // Inizializza il conteggio a 0
         aggiornaInterfaccia();
         return true;
     } else if (partecipanti[nomeCapitalizzato]) {
@@ -68,6 +103,8 @@ function aggiornaInterfaccia() {
     const visited = JSON.parse(localStorage.getItem(STORAGE_KEY_VISITED) || '[]');
 
     for (const nome in partecipanti) {
+        const conteggio = votiCorrenti[nome] || 0; // Prende il conteggio dalla mappa
+        
         const card = document.createElement('div');
         card.className = 'partecipante-card';
         card.setAttribute('data-nome', nome);
@@ -78,10 +115,13 @@ function aggiornaInterfaccia() {
         }
 
         card.innerHTML = `
-            <h3>${nome}</h3>
-            <button class="remove-btn" onclick="event.stopPropagation(); apriModaleConfermaElimina('${nome}')">
-                <i class="fa-solid fa-trash-can"></i>
-            </button>
+            <h3 class="partecipante-info">${nome}</h3>
+            <div class="partecipante-info">
+                <span class="vote-count">${conteggio} voti</span>
+                <button class="remove-btn" onclick="event.stopPropagation(); apriModaleConfermaElimina('${nome}')">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
         `;
         listaDiv.appendChild(card);
     }
@@ -91,7 +131,6 @@ function aggiornaInterfaccia() {
 
 let enterListener; 
 
-// Modale Inserimento Nome (AGGIUNTO AUTOFOCUS E GESTIONE TASTO INVIO)
 function apriModaleInserimento() {
     const inputField = document.getElementById('modalNomeInput');
     const modal = document.getElementById('inputModal');
@@ -124,13 +163,11 @@ function salvaNomeDaModale() {
     }
 }
 
-// Modale QR Code
 function apriModaleQr(nome) {
     const modal = document.getElementById('qrModal');
     const modalNome = document.getElementById('modalNomeQr');
     const qrCanvas = document.getElementById('modalQrCanvas');
     
-    // Aggiorna lo stato "visitato"
     let visited = JSON.parse(localStorage.getItem(STORAGE_KEY_VISITED) || '[]');
     if (!visited.includes(nome)) {
         visited.push(nome);
@@ -154,7 +191,6 @@ function apriModaleQr(nome) {
     modal.style.display = 'flex';
 }
 
-// Chiusura Modali: Chiusura solo cliccando sullo sfondo
 function chiudiModale(event, id) {
     const modal = document.getElementById(id);
     if (event.target === modal) {
@@ -177,6 +213,7 @@ function apriModaleConfermaElimina(nome) {
 
 function rimuoviPartecipante(nome) {
     delete partecipanti[nome];
+    delete votiCorrenti[nome]; // Rimuove anche dal conteggio live
     salvaNomi();
     let visited = JSON.parse(localStorage.getItem(STORAGE_KEY_VISITED) || '[]');
     localStorage.setItem(STORAGE_KEY_VISITED, JSON.stringify(visited.filter(n => n !== nome)));
@@ -234,7 +271,6 @@ async function calcolaMediaEVaiAllaClassifica() {
     }
 }
 
-// Funzione di visualizzazione che nasconde l'interfaccia principale
 function visualizzaClassifica(risultatiMedia) {
     const classificaView = document.getElementById('classifica-view');
     const mainView = document.getElementById('main-view');
