@@ -78,29 +78,41 @@ function aggiornaInterfaccia() {
 
 // --- GESTIONE MODALI ---
 
+let enterListener; // Variabile per tracciare il listener di Invio
+
 // Modale Inserimento Nome (AGGIUNTO AUTOFOCUS E GESTIONE TASTO INVIO)
 function apriModaleInserimento() {
     const inputField = document.getElementById('modalNomeInput');
+    const modal = document.getElementById('inputModal');
+    
     inputField.value = '';
     
-    document.getElementById('inputModal').style.display = 'flex';
+    modal.style.display = 'flex';
     inputField.focus(); // Focus immediato
     
-    // Aggiunge un listener temporaneo per il tasto Invio
-    inputField.addEventListener('keydown', function handleEnter(e) {
+    // Rimuove il listener precedente (se esiste) per evitare duplicati
+    if (enterListener) {
+        inputField.removeEventListener('keydown', enterListener);
+    }
+    
+    // Definisce e aggiunge il nuovo listener per il tasto Invio
+    enterListener = function handleEnter(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             salvaNomeDaModale();
-            // Rimuove il listener dopo l'uso
-            inputField.removeEventListener('keydown', handleEnter);
         }
-    });
+    };
+    inputField.addEventListener('keydown', enterListener);
 }
 
 function salvaNomeDaModale() {
     const nome = document.getElementById('modalNomeInput').value;
+    const inputField = document.getElementById('modalNomeInput');
+    
     if (aggiungiPartecipante(nome)) {
         document.getElementById('inputModal').style.display = 'none';
+        // Rimuove il listener dopo il salvataggio
+        inputField.removeEventListener('keydown', enterListener);
     }
 }
 
@@ -115,18 +127,15 @@ function apriModaleQr(nome) {
     if (!visited.includes(nome)) {
         visited.push(nome);
         localStorage.setItem(STORAGE_KEY_VISITED, JSON.stringify(visited));
-        // Aggiorna la classe CSS della card
         const card = document.querySelector(`.partecipante-card[data-nome='${nome}']`);
         if (card) card.classList.add('visited');
     }
 
     const baseUrl = window.location.href.split('?')[0].split('index.html')[0]; 
-    
     const urlVoto = `${baseUrl}voto.html?nome=${encodeURIComponent(nome)}&session=${SESSION_ID}&test=${IS_TEST_MODE}`;
 
     modalNome.textContent = nome;
 
-    // Genera il QR Code nella modale
     new QRious({
         element: qrCanvas,
         value: urlVoto,
@@ -142,6 +151,12 @@ function chiudiModale(event, id) {
     const modal = document.getElementById(id);
     if (event.target === modal) {
         modal.style.display = 'none';
+        
+        // Se si chiude la modale di inserimento, rimuove il listener Invio
+        if (id === 'inputModal') {
+            const inputField = document.getElementById('modalNomeInput');
+            inputField.removeEventListener('keydown', enterListener);
+        }
     }
 }
 
@@ -155,7 +170,6 @@ function apriModaleConfermaElimina(nome) {
 function rimuoviPartecipante(nome) {
     delete partecipanti[nome];
     salvaNomi();
-    // Pulisce anche il flag "visitato"
     let visited = JSON.parse(localStorage.getItem(STORAGE_KEY_VISITED) || '[]');
     localStorage.setItem(STORAGE_KEY_VISITED, JSON.stringify(visited.filter(n => n !== nome)));
     aggiornaInterfaccia();
@@ -183,6 +197,8 @@ async function calcolaMediaEVaiAllaClassifica() {
 
         allVoti.forEach(record => {
             const nome = record.nome;
+            // !!! CORREZIONE BUG CRUCIALE !!!
+            // SheetDB ritorna il 'voto' come STRINGA. Dobbiamo convertirla
             const voto = parseInt(record.voto); 
             
             if (votiRaw.hasOwnProperty(nome) && !isNaN(voto)) {
@@ -208,7 +224,7 @@ async function calcolaMediaEVaiAllaClassifica() {
     } catch (error) {
         document.body.style.cursor = 'default';
         console.error("Errore nel calcolo o nel recupero dei dati:", error);
-        alert(`ERRORE: Impossibile calcolare la media e la classifica.`);
+        alert(`ERRORE: Impossibile calcolare la media e la classifica. Controlla la console. Dettaglio: ${error.message}`);
     }
 }
 
@@ -222,7 +238,7 @@ function visualizzaClassifica(risultatiMedia) {
     listaClassifica.innerHTML = '';
     
     const classificaArray = Object.entries(risultatiMedia)
-        .sort(([, mediaA], [, mediaB]) => mediaB - mediaA); // Ordine decrescente (dal più alto al più basso)
+        .sort(([, mediaA], [, mediaB]) => mediaB - mediaA);
 
     classificaArray.forEach(([nome, media], index) => {
         const li = document.createElement('li');
@@ -234,11 +250,9 @@ function visualizzaClassifica(risultatiMedia) {
         listaClassifica.appendChild(li);
     });
 
-    // Nasconde l'interfaccia principale e il pulsante Classifica
     mainView.style.display = 'none';
     classificaBtn.style.display = 'none';
     
-    // Mostra la classifica pulita
     classificaView.style.display = 'flex';
 }
 
