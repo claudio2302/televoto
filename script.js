@@ -10,7 +10,7 @@ const SESSION_ID = Date.now();
 const STORAGE_KEY_VISITED = 'televotoVisitedQr'; 
 let votiCorrenti = {}; 
 
-// NOTE: db e VOTI_COLLECTION sono resi globali in index.html
+// NOTE: db e VOTI_COLLECTION sono resi globali in firebase_init.js
 
 // --- FUNZIONI DI UTILITÀ ---
 
@@ -26,7 +26,7 @@ async function caricaConteggiVoti() {
     if (!window.db) return;
 
     try {
-        // Usa la sintassi compatibile V8/V9
+        // Usa la sintassi V8/V9 compatibile
         const snapshot = await window.db.collection(window.VOTI_COLLECTION).get();
         
         const conteggi = {};
@@ -120,7 +120,7 @@ function aggiornaInterfaccia() {
     }
 }
 
-// --- GESTIONE MODALI (omessa per brevità) ---
+// --- GESTIONE MODALI ---
 
 let enterListener; 
 
@@ -214,7 +214,7 @@ function rimuoviPartecipante(nome) {
     aggiornaInterfaccia();
 }
 
-// --- FUNZIONI DI CALCOLO E CLASSIFICA (UTILIZZANO FIREBASE) ---
+// --- FUNZIONI DI CALCOLO E CLASSIFICA (UTILIZZA FIREBASE) ---
 
 async function calcolaMediaEVaiAllaClassifica() {
     if (!window.db) {
@@ -225,7 +225,6 @@ async function calcolaMediaEVaiAllaClassifica() {
     document.body.style.cursor = 'wait';
     
     try {
-        // Usa la sintassi V8/V9 compatibile
         const colRef = window.db.collection(window.VOTI_COLLECTION);
         const snapshot = await colRef.get();
         
@@ -321,7 +320,6 @@ async function resetCompleto() {
 
         await batch.commit();
 
-        // Cancella i nomi e i flag di visita dal localStorage
         localStorage.removeItem(STORAGE_KEY_NOMI);
         localStorage.removeItem(STORAGE_KEY_VISITED);
         
