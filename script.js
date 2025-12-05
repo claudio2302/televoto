@@ -10,6 +10,7 @@ const SESSION_ID = Date.now();
 const STORAGE_KEY_VISITED = 'televotoVisitedQr'; 
 let votiCorrenti = {}; 
 
+// NOTE: db e VOTI_COLLECTION sono resi globali in index.html
 
 // --- FUNZIONI DI UTILITÀ ---
 
@@ -22,12 +23,11 @@ function capitalizeWords(str) {
 
 // Funzione per scaricare i voti e aggiornare la mappa votiCorrenti (UTILIZZA FIREBASE)
 async function caricaConteggiVoti() {
-    if (!window.db || !window.firestore_getDocs) return;
+    if (!window.db) return;
 
     try {
-        // Usa le funzioni globali e le variabili globali
-        const colRef = window.firestore_collection(window.db, window.VOTI_COLLECTION);
-        const snapshot = await window.firestore_getDocs(colRef);
+        // Usa la sintassi compatibile V8/V9
+        const snapshot = await window.db.collection(window.VOTI_COLLECTION).get();
         
         const conteggi = {};
         
@@ -120,7 +120,7 @@ function aggiornaInterfaccia() {
     }
 }
 
-// --- GESTIONE MODALI (Omessa, invariata) ---
+// --- GESTIONE MODALI (omessa per brevità) ---
 
 let enterListener; 
 
@@ -214,11 +214,10 @@ function rimuoviPartecipante(nome) {
     aggiornaInterfaccia();
 }
 
-
 // --- FUNZIONI DI CALCOLO E CLASSIFICA (UTILIZZANO FIREBASE) ---
 
 async function calcolaMediaEVaiAllaClassifica() {
-    if (!window.db || !window.firestore_getDocs) {
+    if (!window.db) {
         alert("Il database non è stato ancora inizializzato. Riprova tra un secondo.");
         return;
     }
@@ -226,9 +225,9 @@ async function calcolaMediaEVaiAllaClassifica() {
     document.body.style.cursor = 'wait';
     
     try {
-        // Usa le funzioni globali
-        const colRef = window.firestore_collection(window.db, window.VOTI_COLLECTION);
-        const snapshot = await window.firestore_getDocs(colRef);
+        // Usa la sintassi V8/V9 compatibile
+        const colRef = window.db.collection(window.VOTI_COLLECTION);
+        const snapshot = await colRef.get();
         
         let risultatiMedia = {};
         let votiRaw = {}; 
@@ -265,8 +264,7 @@ async function calcolaMediaEVaiAllaClassifica() {
     } catch (error) {
         document.body.style.cursor = 'default';
         console.error("Errore nel calcolo o nel recupero dei dati da Firebase:", error);
-        // Messaggio di errore più generico, dato che l'errore specifico è stato gestito
-        alert(`ERRORE: Impossibile calcolare la media e la classifica. Dettaglio: ${error.message}`); 
+        alert(`ERRORE: Impossibile calcolare la media e la classifica. Controlla i permessi e la connessione Firebase.`);
     }
 }
 
@@ -300,7 +298,7 @@ function visualizzaClassifica(risultatiMedia) {
 
 // 7. FUNZIONE DI RESET COMPLETO (UTILIZZA FIREBASE)
 async function resetCompleto() {
-    if (!window.db || !window.firestore_writeBatch) {
+    if (!window.db) {
         alert("Il database non è inizializzato.");
         return;
     }
@@ -312,11 +310,10 @@ async function resetCompleto() {
     document.body.style.cursor = 'wait';
 
     try {
-        const batch = window.firestore_writeBatch(window.db);
+        const colRef = window.db.collection(window.VOTI_COLLECTION);
+        const snapshot = await colRef.get();
         
-        // Ottiene tutti i documenti per la cancellazione in batch
-        const colRef = window.firestore_collection(window.db, window.VOTI_COLLECTION);
-        const snapshot = await window.firestore_getDocs(colRef);
+        const batch = window.db.batch();
         
         snapshot.forEach((doc) => {
             batch.delete(doc.ref);
@@ -334,6 +331,6 @@ async function resetCompleto() {
     } catch (error) {
         document.body.style.cursor = 'default';
         console.error("Errore grave nel reset con Firebase:", error);
-        alert(`ERRORE GRAVE DURANTE IL RESET. Voti NON azzerati. Dettagli: ${error.message}`);
+        alert(`ERRORE GRAVE DURANTE IL RESET. Voti NON azzerati. Controlla la console.`);
     }
 }
