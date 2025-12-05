@@ -19,9 +19,6 @@ window.sortedFinalRanking = [];
 window.podiumState = 0; 
 window.page3Active = false; 
 
-// --- ELEMENTI AUDIO (Resi globali per script.js) ---
-const vittoriaAudio = document.getElementById('vittoriaAudio');
-
 // --- FUNZIONI DI UTILITÀ ---
 
 function capitalizeWords(str) {
@@ -129,7 +126,7 @@ function aggiornaInterfaccia() {
     }
 }
 
-// --- GESTIONE MODALI (Omessa per brevità) ---
+// --- GESTIONE MODALI (omessa per brevità, sono invariate) ---
 
 let enterListener; 
 
@@ -266,15 +263,9 @@ async function calcolaMediaEVaiAllaClassifica() {
                 media = parseFloat((somma / totaleVoti).toFixed(2));
             }
             
-            // Solo se ha voti o è stato inserito
-            if (totaleVoti > 0 || partecipanti.hasOwnProperty(nome)) {
-                 pScores.push({ nome: nome, totale: media });
-                 risultatiMedia[nome] = media;
-            }
+            pScores.push({ nome: nome, totale: media });
+            risultatiMedia[nome] = media;
         }
-        
-        // Rimuovi quelli senza voti se ci sono
-        pScores = pScores.filter(p => p.totale > 0); 
         
         pScores.sort((a, b) => b.totale - a.totale);
 
@@ -285,12 +276,13 @@ async function calcolaMediaEVaiAllaClassifica() {
         let tiedCount = 0;
         pScores.forEach((p) => {
             if (p.totale !== lastScore) {
-                currentRank += (tiedCount + 1);
+                // Calcola la prossima posizione in base al numero di persone legate
+                currentRank = currentRank + tiedCount + 1;
                 lastScore = p.totale;
                 tiedCount = 0;
-            } else {
-                 tiedCount++;
             }
+            // Incrementa tiedCount DOPO aver assegnato la posizione corrente
+            tiedCount++;
             finalParticipantScores.push({ ...p, posizione: currentRank });
         });
         
@@ -300,6 +292,11 @@ async function calcolaMediaEVaiAllaClassifica() {
         let currentScore = -Infinity;
         let currentPosition = 0;
 
+        // Reset per la corretta aggregazione
+        currentRank = 0;
+        lastScore = -Infinity;
+        
+        // FinalParticipantScores è già ordinato e contiene la posizione corretta
         finalParticipantScores.forEach(p => {
             if (p.totale !== currentScore) {
                 if (currentGroup.length > 0) {
@@ -345,26 +342,16 @@ async function calcolaMediaEVaiAllaClassifica() {
 function goToFinalRankingView() { 
     document.getElementById('main-view').style.display = 'none';
     document.getElementById('classificaBtn').style.display = 'none';
-    document.getElementById('addBtn').style.display = 'none';
     
     const view = document.getElementById('classifica-view');
     view.style.display = 'flex';
     
-    // Contenitore Lista
-    const rListContainer = document.getElementById('ranking-list-container');
-    rListContainer.innerHTML = '';
-    rListContainer.style.opacity = '1';
-    rListContainer.style.display = 'flex';
+    document.getElementById('ranking-list-container').innerHTML = '';
+    document.getElementById('podiumContainer').style.display = 'none';
+    document.getElementById('podiumContainer').classList.remove('visible'); 
     
-    // Contenitore Podio
-    const pCont = document.getElementById('podiumContainer');
-    pCont.style.display = 'none';
-    pCont.classList.remove('visible'); 
+    window.page3Active = true;
     
-    window.page3Active = true; 
-    window.podiumState = 0; // Ripristina lo stato a LISTA
-
-    // Assicura che i contenitori podio siano puliti prima di iniziare
     document.getElementById('podiumPos1').innerHTML = '';
     document.getElementById('podiumPos2').innerHTML = '';
     document.getElementById('podiumPos3').innerHTML = '';
@@ -372,7 +359,6 @@ function goToFinalRankingView() {
     document.getElementById('podiumPos2').classList.remove('visible', 'show-name');
     document.getElementById('podiumPos3').classList.remove('visible', 'show-name');
     
-    // Pulizia dell'overlay e dei coriandoli
     document.getElementById('podiumOverlay').classList.remove('active');
     window.stopConfetti(); 
 }
@@ -382,48 +368,12 @@ window.closeFinalRankingView = function() {
     document.getElementById('classifica-view').style.display = 'none';
     document.getElementById('main-view').style.display = 'block';
     document.getElementById('classificaBtn').style.display = 'block';
-    document.getElementById('addBtn').style.display = 'block';
-    
     window.page3Active = false;
     window.finalRankingIndex = 0;
     window.podiumState = 0;
     
     caricaConteggiVoti(); 
 };
-
-/**
- * Funzione di utilità per popolare un blocco podio.
- * @param {string} id - ID dell'elemento (es. 'podiumPos3').
- * @param {object} grp - Oggetto gruppo con nomi, totale, posizione.
- * @param {boolean} showN - Mostra il nome.
- * @param {boolean} showS - Mostra il punteggio.
- */
-function populatePodiumElement(id, grp, showN = true, showS = true) { 
-    const el = document.getElementById(id); 
-    if (!el || !grp) return; 
-    
-    // Rimuovi la classe show-name per la transizione
-    el.classList.remove('show-name'); 
-    
-    let nHTML = (grp.nomi.length > 1) 
-        ? `<div class="names-group">${grp.nomi.join('<br>')}</div>` 
-        : `<span class="name">${grp.nomi[0] || '&nbsp;'}</span>`; 
-        
-    // Inserisce il punteggio solo se showS è true
-    let sHTML = showS ? `<span class="score">${grp.totale.toFixed(2)}</span>` : `<span class="score">&nbsp;</span>`; 
-    
-    // Imposta l'HTML con il nome (invisibile) e il punteggio
-    el.innerHTML = nHTML + sHTML;
-    
-    // Forza il ricalcolo per assicurare che la transizione funzioni
-    void el.offsetWidth; 
-    
-    // Rendi visibile il blocco (transizione opacity)
-    if (!el.classList.contains('visible')) el.classList.add('visible'); 
-    
-    // Rendi visibile il nome con un leggero ritardo (transizione opacity interna)
-    if (showN) setTimeout(() => el.classList.add('show-name'), 100); 
-}
 
 // Funzione che gestisce l'animazione graduale (CORE DELLA TUA RICHIESTA)
 window.showNextRankingRow = function() { 
@@ -432,36 +382,35 @@ window.showNextRankingRow = function() {
     const rListContainer = document.getElementById('ranking-list-container');
     const pCont = document.getElementById('podiumContainer');
     const podiumOverlay = document.getElementById('podiumOverlay');
+    const vittoriaAudio = document.getElementById('vittoriaAudio');
 
-    const g1 = window.sortedFinalRanking.slice().reverse().find(g => g.posizione === 1);
-    const g2 = window.sortedFinalRanking.slice().reverse().find(g => g.posizione === 2);
-    const g3 = window.sortedFinalRanking.slice().reverse().find(g => g.posizione === 3);
+    const g1 = window.sortedFinalRanking.find(g => g.posizione === 1);
+    const g2 = window.sortedFinalRanking.find(g => g.posizione === 2);
+    const g3 = window.sortedFinalRanking.find(g => g.posizione === 3);
 
     // --- LOGICA DI TRANSIZIONE DALLA LISTA AL PODIO (Posizione 4) ---
     if (window.podiumState === 0) { 
         const threshPosition = 3; 
         
-        // Controlla se l'indice corrente è fuori dall'array O se il prossimo elemento è tra i primi 3
+        // Se l'indice corrente è fuori dall'array O siamo arrivati al 4° classificato
         if (window.finalRankingIndex >= window.sortedFinalRanking.length || 
             (window.sortedFinalRanking[window.finalRankingIndex]?.posizione <= threshPosition)) { 
             
             if (window.sortedFinalRanking.length > 0) { 
-                
-                // FASE 1: Dissolvenza della lista
-                rListContainer.style.opacity = '0'; 
+                // FASE 1: NASCONDI LISTA E PREPARA IL PODIO
+                rListContainer.style.opacity = '0';
                 
                 setTimeout(() => {
                     rListContainer.style.display = 'none';
+                    pCont.style.display = 'block'; 
                     
-                    // Mostra l'overlay
                     podiumOverlay.classList.add('active'); 
                     
-                    // Mostra il Podio Container e forza il ricalcolo
-                    pCont.style.display = 'flex'; 
                     void pCont.offsetWidth; 
                     pCont.classList.add('visible'); 
+                    pCont.style.opacity = '1';
                     
-                    window.podiumState = 1; // Stato: Podio mostrato (Immagine + Overlay)
+                    window.podiumState = 1; 
                 }, 500); 
             } else {
                 window.closeFinalRankingView();
@@ -475,8 +424,11 @@ window.showNextRankingRow = function() {
         row.className = 'ranking-row'; 
         const pos = grp.posizione + '°'; 
         
+        const namesCount = grp.nomi.length; // Calcola il numero di nomi legati
+        row.setAttribute('data-nomi', namesCount); // IMPOSTA ATTRIBUTO PER ALTEZZA DINAMICA
+        
         let nameContent;
-        if (grp.nomi.length > 1) { 
+        if (namesCount > 1) { 
             row.classList.add('tied'); 
             nameContent = `<div class="names-group">${grp.nomi.join('<br>')}</div>`;
         } else {
@@ -485,14 +437,11 @@ window.showNextRankingRow = function() {
         
         row.innerHTML = `<span class="ranking-pos">${pos}</span>${nameContent}<span class="score">${grp.totale.toFixed(2)}</span>`; 
         
-        // Inserisci in cima (per far scorrere la lista verso il basso e il nuovo in alto)
         rListContainer.insertBefore(row, rListContainer.firstChild); 
         
-        // Attiva l'animazione slideInLeft
         void row.offsetWidth; 
         row.classList.add('shown');
         
-        // Scorri la lista se ci sono troppi elementi
         if (rListContainer.children.length > 5) {
              rListContainer.scrollTop = 0;
         }
@@ -509,13 +458,11 @@ window.showNextRankingRow = function() {
                 break; 
                 
             case 3: // RIVELA 2° e 1° CLASSIFICATO (SOLO VOTO)
-                // Usiamo showN=false per mostrare solo il voto
                 if (g2) populatePodiumElement('podiumPos2', g2, false, true); 
                 if (g1) populatePodiumElement('podiumPos1', g1, false, true); 
                 break; 
                 
             case 4: // RIVELA NOMI (2° e 1° CLASSIFICATO) + EFFETTI FINALI
-                // Usiamo showN=true per mostrare i nomi
                 if (g2) populatePodiumElement('podiumPos2', g2, true, true); 
                 if (g1) populatePodiumElement('podiumPos1', g1, true, true); 
                 
@@ -528,21 +475,37 @@ window.showNextRankingRow = function() {
                     
                 }, 500); 
                 break;
-                
-            default:
-                // Stato 5+ : La logica di keydown (in index.html) gestirà l'uscita
-                break;
         } 
     } 
 };
 
+// Funzione di utilità per popolare un blocco podio (invariata)
+function populatePodiumElement(id, grp, showN = true, showS = true) { 
+    const el = document.getElementById(id); 
+    if (!el || !grp) return; 
+    
+    el.classList.remove('show-name'); 
+    
+    let nHTML = (grp.nomi.length > 1) 
+        ? `<div class="names-group">${grp.nomi.join('<br>')}</div>` 
+        : `<span class="name">${grp.nomi[0] || '&nbsp;'}</span>`; 
+        
+    let sHTML = showS ? `<span class="score">${grp.totale.toFixed(2)}</span>` : `<span class="score">&nbsp;</span>`; 
+    
+    el.innerHTML = nHTML + sHTML;
+    
+    void el.offsetWidth; 
+    
+    if (!el.classList.contains('visible')) el.classList.add('visible'); 
+    
+    if (showN) setTimeout(() => el.classList.add('show-name'), 100); 
+}
 
-// --- FUNZIONI CORIANDOLI (allineate a classifica.html) ---
 
-const confettiContainer = document.getElementById('confettiContainer'); 
-let confettiTimer = null;
+// --- FUNZIONI CORIANDOLI (invariate) ---
 
 window.startConfetti = function() {
+    const confettiContainer = document.getElementById('confettiContainer');
     if (!confettiContainer) return;
     window.stopConfetti(); 
     confettiContainer.style.display = 'block';
@@ -550,8 +513,7 @@ window.startConfetti = function() {
     const colors = ['#f093fb', '#f5576c', '#667eea', '#764ba2', '#fffb8f', '#ffffff'];
 
     const createPiece = () => {
-        // Controllo aggiuntivo per fermare i coriandoli se lo stato non è più il 4 (fine)
-        if (!window.page3Active || window.podiumState < 4) { 
+        if (!window.page3Active || window.podiumState <= 3) {
             window.stopConfetti(); 
             return;
         }
@@ -574,16 +536,16 @@ window.startConfetti = function() {
         }, duration * 1000 + 500); 
     };
 
-    window.confettiTimer = setInterval(createPiece, 50); // Frequenza alta per effetto pieno
+    window.confettiTimer = setInterval(createPiece, 50);
 }
 
 window.stopConfetti = function() {
+    const confettiContainer = document.getElementById('confettiContainer');
     if (window.confettiTimer) {
         clearInterval(window.confettiTimer); 
         window.confettiTimer = null;
     }
     if (confettiContainer) {
-         // Lascia il tempo ai coriandoli attuali di finire la caduta
          setTimeout(() => {
              if (confettiContainer && !window.confettiTimer) { 
                   confettiContainer.innerHTML = ''; 
