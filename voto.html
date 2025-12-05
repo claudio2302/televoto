@@ -31,8 +31,7 @@
             margin: 0;
         }
         .voto-container {
-            /* INIZIALMENTE NASCOSTO */
-            display: none; 
+            display: none; /* Inizialmente nascosto */
             background-color: var(--card-bg);
             padding: 40px 30px;
             border-radius: 15px;
@@ -125,27 +124,26 @@
             const messaggioElemento = document.getElementById('messaggio');
 
             if (!window.db) {
-                // Se Firebase non è pronto dopo l'evento, mostra un errore
                 loader.textContent = "Errore Critico: Impossibile connettersi al database.";
                 return;
             }
-
-            // Database pronto, nasconde il loader e mostra il container
-            loader.style.display = 'none';
-            votoContainer.style.display = 'block';
-
+            
+            // --- INIZIALIZZAZIONE PARAMETRI E MOSTRA VISTA ---
             const params = new URLSearchParams(window.location.search);
             nomePartecipante = params.get('nome');
             sessionId = params.get('session');
-            isTestMode = (params.get('test') === 'true');
+            isTestMode = (params.get('test') === 'true'); // !!! CORREZIONE QUI !!!
             
             const nomeDecodificato = decodeURIComponent(nomePartecipante);
-            
             const bloccoVoto = document.getElementById('bloccoVoto');
+
+            loader.style.display = 'none';
+            votoContainer.style.display = 'block';
 
             if (nomePartecipante && sessionId) {
                 document.getElementById('nomePartecipante').textContent = `${nomeDecodificato}`;
                 
+                // --- CONTROLLO DUPLICATO (SOLO SE NON SIAMO IN MODALITÀ TEST) ---
                 if (!isTestMode && localStorage.getItem(getVotoKey()) === 'true') {
                     messaggioElemento.textContent = `Hai già votato ${nomeDecodificato} in questa sessione!`;
                     messaggioElemento.style.color = 'orange';
@@ -180,12 +178,12 @@
 
             const voto = parseInt(document.getElementById('votoInput').value);
             
-
             if (isNaN(voto) || voto < 1 || voto > 10) {
                 alert('Inserisci un voto valido tra 1 e 10.');
                 return;
             }
 
+            // Blocco duplicato (SOLO se non è modalità test)
             if (!isTestMode && localStorage.getItem(getVotoKey()) === 'true') {
                 messaggioElemento.textContent = `Hai già votato ${decodeURIComponent(nomePartecipante)} in questa sessione!`;
                 messaggioElemento.style.color = 'orange';
@@ -198,13 +196,13 @@
             messaggioElemento.style.display = 'block';
             
             try {
-                // Usa la sintassi V8/V9 compatibile
                 await window.db.collection(window.VOTI_COLLECTION).add({
                     nome: decodeURIComponent(nomePartecipante),
                     voto: voto.toString(),
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
+                // Salva il flag SOLO se non è modalità test
                 if (!isTestMode) {
                      localStorage.setItem(getVotoKey(), 'true');
                 }
@@ -212,6 +210,7 @@
                 messaggioElemento.textContent = "Voto registrato con successo! ✅";
                 messaggioElemento.style.color = 'var(--success-color)';
                 
+                // Nasconde il blocco voto solo in modalità normale
                 if (!isTestMode) {
                      document.getElementById('bloccoVoto').style.display = 'none';
                 } else {
