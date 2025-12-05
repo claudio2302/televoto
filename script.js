@@ -15,10 +15,11 @@ let votiCorrenti = {};
 // --- VARIABILI DI STATO CLASSIFICA ---
 window.finalRankingIndex = 0;
 window.sortedFinalRanking = [];
-window.podiumState = 0; // 0=Lista; 1=Transizione Podio; 2=3° posto; 3=1°/2° solo voto; 4=Rivelazione Nomi + Effetti
+// 0=Lista; 1=Transizione Podio (Immagine); 2=Rivelazione 3°; 3=Rivelazione 1°/2° Voto; 4=Rivelazione Nomi + Effetti
+window.podiumState = 0; 
 window.page3Active = false; 
 
-// --- FUNZIONI DI UTILITÀ (omesse per brevità, invariate) ---
+// --- FUNZIONI DI UTILITÀ ---
 
 function capitalizeWords(str) {
     if (!str) return str;
@@ -27,27 +28,36 @@ function capitalizeWords(str) {
     }).join(' ');
 }
 
+// Funzione per scaricare i voti e aggiornare la mappa votiCorrenti (UTILIZZA FIREBASE)
 async function caricaConteggiVoti() {
     if (!window.db) return;
+
     try {
         const snapshot = await window.db.collection(window.VOTI_COLLECTION).get();
+        
         const conteggi = {};
-        for (const nome of Object.keys(partecipanti)) { conteggi[nome] = 0; }
+        
+        for (const nome of Object.keys(partecipanti)) {
+            conteggi[nome] = 0;
+        }
+
         snapshot.forEach(doc => {
             const data = doc.data();
             const nome = data.nome;
-            if (conteggi.hasOwnProperty(nome)) { conteggi[nome] += 1; }
+            if (conteggi.hasOwnProperty(nome)) {
+                conteggi[nome] += 1;
+            }
         });
+
         votiCorrenti = conteggi;
         aggiornaInterfaccia(); 
+
     } catch (error) {
         console.error("Impossibile caricare i conteggi dei voti da Firebase:", error);
     }
 }
 
-// ... (Funzioni: caricaPartecipanti, salvaNomi, aggiungiPartecipante, aggiornaInterfaccia, gestione modali, ecc. sono invariate) ...
-
-// Funzioni di base (incluse per completezza dello script)
+// 1. Carica la lista dei nomi dal localStorage
 function caricaPartecipanti() {
     const nomiSalvati = localStorage.getItem(STORAGE_KEY_NOMI);
     if (nomiSalvati) {
@@ -57,11 +67,13 @@ function caricaPartecipanti() {
     aggiornaInterfaccia();
 }
 
+// 2. Salva solo la lista dei nomi nel localStorage
 function salvaNomi() {
     const nomiArray = Object.keys(partecipanti);
     localStorage.setItem(STORAGE_KEY_NOMI, JSON.stringify(nomiArray));
 }
 
+// 3. Aggiunge un nuovo partecipante dalla modale
 function aggiungiPartecipante(nome) {
     const nomeCapitalizzato = capitalizeWords(nome.trim());
 
@@ -82,6 +94,7 @@ function aggiungiPartecipante(nome) {
     }
 }
 
+// 4. Aggiorna l'interfaccia utente
 function aggiornaInterfaccia() {
     const listaDiv = document.getElementById('listaPartecipanti');
     listaDiv.innerHTML = '';
@@ -112,6 +125,8 @@ function aggiornaInterfaccia() {
         listaDiv.appendChild(card);
     }
 }
+
+// --- GESTIONE MODALI (Omessa per brevità) ---
 
 let enterListener; 
 
@@ -204,7 +219,7 @@ function rimuoviPartecipante(nome) {
     localStorage.setItem(STORAGE_KEY_VISITED, JSON.stringify(visited.filter(n => n !== nome)));
     aggiornaInterfaccia();
 }
-// ... (Funzioni di base) ...
+
 
 // --- FUNZIONI DI CALCOLO E CLASSIFICA (UTILIZZA FIREBASE) ---
 
@@ -336,6 +351,10 @@ function goToFinalRankingView() {
     document.getElementById('podiumPos1').classList.remove('visible', 'show-name');
     document.getElementById('podiumPos2').classList.remove('visible', 'show-name');
     document.getElementById('podiumPos3').classList.remove('visible', 'show-name');
+    
+    // Pulizia dell'overlay e dei coriandoli
+    document.getElementById('podiumOverlay').classList.remove('active');
+    window.stopConfetti(); 
 }
 
 // Chiude la classifica e torna alla vista principale
@@ -377,15 +396,17 @@ window.showNextRankingRow = function() {
                 
                 setTimeout(() => {
                     rListContainer.style.display = 'none';
-                    pCont.style.display = 'flex'; 
-                    podiumOverlay.classList.add('active'); // Dissolvenza per lo sfondo scuro
+                    pCont.style.display = 'block'; // Usiamo block per centratura e posizionamento assoluto figli
+                    
+                    // Dissolvenza dell'overlay (lo attiva in 0.5s)
+                    podiumOverlay.classList.add('active'); 
                     
                     void pCont.offsetWidth; 
-                    pCont.classList.add('visible'); // Appare l'immagine del podio
+                    pCont.classList.add('visible'); 
                     pCont.style.opacity = '1';
                     
-                    window.podiumState = 1; // Stato: Pronto per rivelare 3° posto
-                }, 500); // Dopo la dissolvenza
+                    window.podiumState = 1; // Stato: Podio mostrato, pronto per rivelare 3° posto
+                }, 500); 
             } else {
                 window.closeFinalRankingView();
             }
@@ -413,9 +434,8 @@ window.showNextRankingRow = function() {
         void row.offsetWidth; 
         row.classList.add('shown');
         
-        // Simula lo scroll verso l'alto se ci sono troppi elementi
         if (rListContainer.children.length > 5) {
-             rListContainer.scrollTop = 0; // Forza lo scroll in cima
+             rListContainer.scrollTop = 0;
         }
 
         window.finalRankingIndex++; 
@@ -524,5 +544,44 @@ window.stopConfetti = function() {
                   confettiContainer.style.display = 'none'; 
              }
          }, 7000); 
+    }
+}
+
+
+// 7. FUNZIONE DI RESET COMPLETO (UTILIZZA FIREBASE)
+async function resetCompleto() {
+    if (!window.db) {
+        alert("Il database non è inizializzato.");
+        return;
+    }
+
+    if (!confirm("SEI SICURO? QUESTA È UN'OPERAZIONE DI ELIMINAZIONE PERMANENTE. I voti saranno cancellati da Firebase e la lista nomi azzerata.")) {
+        return;
+    }
+
+    document.body.style.cursor = 'wait';
+
+    try {
+        const colRef = window.db.collection(window.VOTI_COLLECTION);
+        const snapshot = await colRef.get();
+        
+        const batch = window.db.batch();
+        
+        snapshot.forEach((doc) => {
+            batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+
+        localStorage.removeItem(STORAGE_KEY_NOMI);
+        localStorage.removeItem(STORAGE_KEY_VISITED);
+        
+        alert("RESET COMPLETATO! Nuova sessione iniziata. I voti su Firebase sono stati cancellati.");
+        location.reload(); 
+
+    } catch (error) {
+        document.body.style.cursor = 'default';
+        console.error("Errore grave nel reset con Firebase:", error);
+        alert(`ERRORE GRAVE DURANTE IL RESET. Voti NON azzerati. Controlla la console.`);
     }
 }
