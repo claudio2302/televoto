@@ -11,10 +11,11 @@
             --gradient-mid: #03A9F4;
             --gradient-end-dark: #004488;
             --gradient-end-accent: #9C27B0; 
-            --secondary-button: #00BCD4; /* Azzurro acceso per il voto */
+            --secondary-button: #00BCD4; 
+            --primary-blue: #2196F3; /* Colore Card */
             --card-bg: #ffffff;
-            --success-color: var(--secondary-button); /* Successo diventa Azzurro */
-            --error-color: #EF5350; /* Rosso per l'errore grave (mantenuto) */
+            --success-color: var(--secondary-button); 
+            --error-color: #EF5350; 
         }
         body {
             font-family: 'Poppins', sans-serif;
@@ -38,7 +39,7 @@
             width: 90%;
         }
         h1 {
-            color: var(--gradient-start);
+            color: var(--primary-blue); /* Nome Partecipante in Blu (come le card) */
             font-weight: 800;
             margin-bottom: 5px;
             font-size: 1.8em;
@@ -60,13 +61,13 @@
             transition: border-color 0.3s;
         }
         input[type="number"]:focus {
-            border-color: var(--secondary-button); /* Colore Focus Azzurro */
+            border-color: var(--secondary-button);
             outline: none;
         }
         button {
             padding: 15px 40px;
             font-size: 1.2em;
-            background-color: var(--secondary-button); /* Pulsante Conferma Azzurro */
+            background-color: var(--secondary-button);
             color: white;
             border: none;
             border-radius: 10px;
@@ -124,7 +125,7 @@
                 
                 if (!isTestMode && localStorage.getItem(getVotoKey()) === 'true') {
                     messaggioElemento.textContent = `Hai già votato ${nomeDecodificato} in questa sessione!`;
-                    messaggioElemento.style.color = 'orange'; // Mantenuto arancione per l'avviso
+                    messaggioElemento.style.color = 'orange';
                     messaggioElemento.style.display = 'block';
                     bloccoVoto.style.display = 'none';
                 }
@@ -176,7 +177,7 @@
                     }
                     
                     messaggioElemento.textContent = "Voto registrato con successo! ✅";
-                    messaggioElemento.style.color = 'var(--success-color)'; // Azzurro successo
+                    messaggioElemento.style.color = 'var(--success-color)';
                     
                     if (!isTestMode) {
                          document.getElementById('bloccoVoto').style.display = 'none';
@@ -186,12 +187,12 @@
                     }
                 } else {
                     messaggioElemento.textContent = "Errore durante la registrazione del voto.";
-                    messaggioElemento.style.color = 'var(--error-color)'; // Rosso errore
+                    messaggioElemento.style.color = 'var(--error-color)';
                 }
                 
             } catch (error) {
                 messaggioElemento.textContent = `Errore di connessione. Verifica la tua connessione internet.`;
-                messaggioElemento.style.color = 'var(--error-color)'; // Rosso errore
+                messaggioElemento.style.color = 'var(--error-color)';
                 console.error('Errore nell\'invio del voto:', error);
             }
         }
