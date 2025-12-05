@@ -23,10 +23,10 @@ function capitalizeWords(str) {
 
 // Funzione per scaricare i voti e aggiornare la mappa votiCorrenti (UTILIZZA FIREBASE)
 async function caricaConteggiVoti() {
-    if (!window.db) return;
+    // Si assicura che db sia pronto, altrimenti esce
+    if (!window.db) return; 
 
     try {
-        // Usa la sintassi V8/V9 compatibile
         const snapshot = await window.db.collection(window.VOTI_COLLECTION).get();
         
         const conteggi = {};
@@ -120,7 +120,7 @@ function aggiornaInterfaccia() {
     }
 }
 
-// --- GESTIONE MODALI ---
+// --- GESTIONE MODALI (omessa per brevità, codice invariato) ---
 
 let enterListener; 
 
@@ -217,8 +217,9 @@ function rimuoviPartecipante(nome) {
 // --- FUNZIONI DI CALCOLO E CLASSIFICA (UTILIZZA FIREBASE) ---
 
 async function calcolaMediaEVaiAllaClassifica() {
+    // Controllo robusto che il DB sia pronto
     if (!window.db) {
-        alert("Il database non è stato ancora inizializzato. Riprova tra un secondo.");
+        alert("Il database non è stato ancora inizializzato. Attendi un istante e riprova. Se l'errore persiste, ricarica la pagina.");
         return;
     }
     
