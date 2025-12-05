@@ -7,41 +7,43 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #007bff;
-            --secondary-color: #28a745;
-            --danger-color: #dc3545;
-            --bg-color: #f8f9fa;
+            --gradient-start: #00796B; /* Ottanio scuro */
+            --gradient-end: #03A9F4; /* Blu Cyano */
+            --primary-button: #FF5722; /* Arancione Acceso (Contrasto) */
             --card-bg: #ffffff;
         }
         body {
             font-family: 'Poppins', sans-serif;
-            background-color: var(--bg-color);
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
             color: #333;
             text-align: center;
             padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
             min-height: 100vh;
+            margin: 0;
         }
         .voto-container {
             background-color: var(--card-bg);
             padding: 40px 30px;
             border-radius: 15px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
             max-width: 400px;
             width: 90%;
-            margin-top: 5vh;
         }
         h1 {
-            color: var(--primary-color);
+            color: var(--gradient-start);
             font-weight: 800;
             margin-bottom: 5px;
+            font-size: 1.8em;
         }
         h2 {
             font-weight: 600;
             margin-bottom: 25px;
             color: #555;
+            font-size: 1.2em;
         }
         input[type="number"] {
             padding: 15px;
@@ -54,13 +56,13 @@
             transition: border-color 0.3s;
         }
         input[type="number"]:focus {
-            border-color: var(--primary-color);
+            border-color: var(--primary-button);
             outline: none;
         }
         button {
             padding: 15px 40px;
             font-size: 1.2em;
-            background-color: var(--secondary-color);
+            background-color: var(--primary-button);
             color: white;
             border: none;
             border-radius: 10px;
@@ -69,22 +71,13 @@
             width: 100%;
         }
         button:hover {
-            background-color: #1e7e34;
+            background-color: #E64A19;
             transform: translateY(-2px);
         }
         #messaggio {
             margin-top: 30px;
             font-size: 1.1em;
             font-weight: 600;
-        }
-        #testModeWarning {
-            color: orange;
-            margin-top: 20px;
-            font-size: 0.9em;
-            font-weight: 600;
-            border: 1px solid orange;
-            padding: 5px;
-            border-radius: 5px;
         }
     </style>
 </head>
@@ -97,24 +90,22 @@
             <button onclick="inviaVoto()">Conferma Voto</button>
         </div>
         <p id="messaggio" style="display:none;"></p>
-        <p id="testModeWarning" style="display:none;">[Modalità TEST: Puoi votare più volte la stessa persona.]</p>
     </div>
 
     <script>
         let nomePartecipante = '';
         let sessionId = '';
-        let isTestMode = false; // Nuovo stato per la modalità test
+        let isTestMode = false;
         
-        // **!!! DEVI INCOLLARE QUI L'URL API DI SHEETDB.IO !!!**
+        // *** URL API AGGIORNATO ***
         const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/modve7uqqwetx'; 
 
-        // Funzione per generare la chiave di verifica unica (ORA INCLUDE LA SESSIONE)
+        // Funzione per generare la chiave di verifica unica (ID Sessione + Nome)
         function getVotoKey() {
-            // Chiave unica = "voto_eseguito_per_" + Nome + "_" + ID Sessione
             return 'voto_eseguito_per_' + decodeURIComponent(nomePartecipante) + '_' + sessionId;
         }
 
-        // 1. Legge il nome, la sessione e verifica il voto all'avvio
+        // 1. Legge i parametri e verifica il voto all'avvio
         document.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
             nomePartecipante = params.get('nome');
@@ -125,11 +116,6 @@
             
             const messaggioElemento = document.getElementById('messaggio');
             const bloccoVoto = document.getElementById('bloccoVoto');
-            const testWarning = document.getElementById('testModeWarning');
-
-            if (isTestMode) {
-                testWarning.style.display = 'block';
-            }
 
             if (nomePartecipante && sessionId) {
                 document.getElementById('nomePartecipante').textContent = `${nomeDecodificato}`;
@@ -142,7 +128,7 @@
                     bloccoVoto.style.display = 'none';
                 }
             } else {
-                document.getElementById('nomePartecipante').textContent = 'Errore: Parametri di sessione mancanti.';
+                document.getElementById('nomePartecipante').textContent = 'Errore: Link di voto non valido.';
                 bloccoVoto.style.display = 'none';
             }
         });
@@ -186,19 +172,24 @@
                 });
                 
                 if (response.ok) {
-                    // *** SALVA IL FLAG SOLO SE NON SIAMO IN MODALITÀ TEST ***
+                    // Salva il flag solo se NON siamo in modalità test
                     if (!isTestMode) {
                          localStorage.setItem(getVotoKey(), 'true');
                     }
                     
                     messaggioElemento.textContent = "Voto registrato con successo! ✅";
                     messaggioElemento.style.color = 'green';
-                    // In modalità test, lascia il pulsante per votare di nuovo
+                    
+                    // Nasconde l'interfaccia di voto solo se non siamo in modalità test
                     if (!isTestMode) {
                          document.getElementById('bloccoVoto').style.display = 'none';
+                    } else {
+                         // Se è test, lascia il blocco voto visibile per votare di nuovo
+                         messaggioElemento.style.color = 'orange';
+                         messaggioElemento.textContent = "Voto registrato (Modalità Test). Puoi votare di nuovo."
                     }
                 } else {
-                    messaggioElemento.textContent = "Errore durante la registrazione del voto. Riprova più tardi.";
+                    messaggioElemento.textContent = "Errore durante la registrazione del voto.";
                     messaggioElemento.style.color = 'red';
                 }
                 
