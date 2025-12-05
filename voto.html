@@ -88,33 +88,8 @@
 
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-    <script>
-        // Configurazione Firebase: I TUOI DATI INSERITI QUI
-        const firebaseConfig = {
-            apiKey: "AIzaSyA-i-_8qSYx_NTBRkjYho3q0msA67P7P7g",
-            authDomain: "televoto.firebaseapp.com",
-            projectId: "televoto",
-            storageBucket: "televoto.firebasestorage.app",
-            messagingSenderId: "310518525910",
-            appId: "1:310518525910:web:b52785433524c4619a7e77"
-        };
-
-        const app = firebase.initializeApp(firebaseConfig);
-        window.db = app.firestore(); // Rende disponibile il database
-        window.VOTI_COLLECTION = "voti"; 
-    </script>
-    </head>
-<body>
-    <div class="voto-container">
-        <h1 id="nomePartecipante"></h1>
-        <div id="bloccoVoto" class="blocco-voto">
-            <h2>Voto da 1 a 10</h2>
-            <input type="number" id="votoInput" min="1" max="10" value="1" required>
-            <button onclick="inviaVoto()">Conferma Voto</button>
-        </div>
-        <p id="messaggio" style="display:none;"></p>
-    </div>
-
+    
+    <script src="firebase_init.js"></script> 
     <script>
         let nomePartecipante = '';
         let sessionId = '';
@@ -135,6 +110,22 @@
             const messaggioElemento = document.getElementById('messaggio');
             const bloccoVoto = document.getElementById('bloccoVoto');
 
+            // Verifica l'inizializzazione prima di procedere
+            if (!window.db) {
+                // Se Firebase non è pronto, attende o mostra l'errore
+                 window.addEventListener('firebaseReady', () => {
+                    if (window.db) {
+                        // Riprova l'inizializzazione dopo l'evento
+                        if (nomePartecipante && sessionId) {
+                           document.getElementById('nomePartecipante').textContent = `${nomeDecodificato}`;
+                        }
+                    } else {
+                        document.body.innerHTML = '<h1>Errore: Impossibile connettersi al database. Riprova.</h1>';
+                    }
+                 });
+            }
+
+
             if (nomePartecipante && sessionId) {
                 document.getElementById('nomePartecipante').textContent = `${nomeDecodificato}`;
                 
@@ -152,8 +143,7 @@
 
         async function inviaVoto() {
             if (!window.db) {
-                // Se Firebase non è pronto, avvisa l'utente
-                messaggioElemento.textContent = "Errore di inizializzazione. Ricarica la pagina.";
+                messaggioElemento.textContent = "Errore di inizializzazione del database. Ricarica la pagina.";
                 messaggioElemento.style.color = 'var(--error-color)';
                 messaggioElemento.style.display = 'block';
                 return;
@@ -183,7 +173,7 @@
                 await window.db.collection(window.VOTI_COLLECTION).add({
                     nome: decodeURIComponent(nomePartecipante),
                     voto: voto.toString(),
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp() // Utile per l'ordinamento
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
                 if (!isTestMode) {
