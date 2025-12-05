@@ -12,14 +12,13 @@ let votiCorrenti = {};
 
 // NOTE: db e VOTI_COLLECTION sono resi globali in firebase_init.js
 
-// --- VARIABILI DI STATO CLASSIFICA (DALL'ESEMPIO) ---
+// --- VARIABILI DI STATO CLASSIFICA ---
 window.finalRankingIndex = 0;
 window.sortedFinalRanking = [];
-window.podiumState = 0;
-window.page3Active = false; // Flag per la tastiera
-window.finalParticipantScores = []; // Dati grezzi per il calcolo
+window.podiumState = 0; // 0=Lista; 1=Transizione Podio; 2=3° posto; 3=1°/2° solo voto; 4=Rivelazione Nomi + Effetti
+window.page3Active = false; 
 
-// --- FUNZIONI DI UTILITÀ ---
+// --- FUNZIONI DI UTILITÀ (omesse per brevità, invariate) ---
 
 function capitalizeWords(str) {
     if (!str) return str;
@@ -28,37 +27,27 @@ function capitalizeWords(str) {
     }).join(' ');
 }
 
-// Funzione per scaricare i voti e aggiornare la mappa votiCorrenti
 async function caricaConteggiVoti() {
     if (!window.db) return;
-
     try {
         const snapshot = await window.db.collection(window.VOTI_COLLECTION).get();
-        
         const conteggi = {};
-        
-        for (const nome of Object.keys(partecipanti)) {
-            conteggi[nome] = 0;
-        }
-
+        for (const nome of Object.keys(partecipanti)) { conteggi[nome] = 0; }
         snapshot.forEach(doc => {
             const data = doc.data();
             const nome = data.nome;
-            if (conteggi.hasOwnProperty(nome)) {
-                conteggi[nome] += 1;
-            }
+            if (conteggi.hasOwnProperty(nome)) { conteggi[nome] += 1; }
         });
-
         votiCorrenti = conteggi;
         aggiornaInterfaccia(); 
-
     } catch (error) {
         console.error("Impossibile caricare i conteggi dei voti da Firebase:", error);
     }
 }
 
-// --- FUNZIONI DI GESTIONE PRINCIPALE (omesse per brevità, sono invariate) ---
+// ... (Funzioni: caricaPartecipanti, salvaNomi, aggiungiPartecipante, aggiornaInterfaccia, gestione modali, ecc. sono invariate) ...
 
+// Funzioni di base (incluse per completezza dello script)
 function caricaPartecipanti() {
     const nomiSalvati = localStorage.getItem(STORAGE_KEY_NOMI);
     if (nomiSalvati) {
@@ -125,20 +114,33 @@ function aggiornaInterfaccia() {
 }
 
 let enterListener; 
+
 function apriModaleInserimento() {
     const inputField = document.getElementById('modalNomeInput');
     const modal = document.getElementById('inputModal');
+    
     inputField.value = '';
+    
     modal.style.display = 'flex';
     inputField.focus(); 
-    if (enterListener) { inputField.removeEventListener('keydown', enterListener); }
-    enterListener = function handleEnter(e) { if (e.key === 'Enter') { e.preventDefault(); salvaNomeDaModale(); } };
+    
+    if (enterListener) {
+        inputField.removeEventListener('keydown', enterListener);
+    }
+    
+    enterListener = function handleEnter(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            salvaNomeDaModale();
+        }
+    };
     inputField.addEventListener('keydown', enterListener);
 }
 
 function salvaNomeDaModale() {
     const nome = document.getElementById('modalNomeInput').value;
     const inputField = document.getElementById('modalNomeInput');
+    
     if (aggiungiPartecipante(nome)) {
         document.getElementById('inputModal').style.display = 'none';
         inputField.removeEventListener('keydown', enterListener);
@@ -159,10 +161,18 @@ function apriModaleQr(nome) {
     }
 
     const baseUrl = window.location.href.split('?')[0].replace(/index\.html$/, ''); 
+
     const urlVoto = `${baseUrl}voto.html?nome=${encodeURIComponent(nome)}&session=${SESSION_ID}&test=${IS_TEST_MODE}`;
 
     modalNome.textContent = nome;
-    new QRious({ element: qrCanvas, value: urlVoto, size: 300, padding: 10 });
+
+    new QRious({
+        element: qrCanvas,
+        value: urlVoto,
+        size: 300,
+        padding: 10
+    });
+
     modal.style.display = 'flex';
 }
 
@@ -170,9 +180,12 @@ function chiudiModale(event, id) {
     const modal = document.getElementById(id);
     if (event.target === modal) {
         modal.style.display = 'none';
+        
         if (id === 'inputModal') {
             const inputField = document.getElementById('modalNomeInput');
-            if (enterListener) { inputField.removeEventListener('keydown', enterListener); }
+            if (enterListener) {
+                 inputField.removeEventListener('keydown', enterListener);
+            }
         }
     }
 }
@@ -191,11 +204,9 @@ function rimuoviPartecipante(nome) {
     localStorage.setItem(STORAGE_KEY_VISITED, JSON.stringify(visited.filter(n => n !== nome)));
     aggiornaInterfaccia();
 }
+// ... (Funzioni di base) ...
 
-
-// --------------------------------------------------------------------
-// --- FUNZIONI DI CALCOLO E CLASSIFICA (INTEGRATE DAL TUO ESEMPIO) ---
-// --------------------------------------------------------------------
+// --- FUNZIONI DI CALCOLO E CLASSIFICA (UTILIZZA FIREBASE) ---
 
 async function calcolaMediaEVaiAllaClassifica() {
     if (!window.db) {
@@ -226,7 +237,7 @@ async function calcolaMediaEVaiAllaClassifica() {
             }
         });
         
-        let pScores = []; // Array temporaneo per il calcolo e l'ordinamento
+        let pScores = []; 
         for (const nome in votiRaw) {
             const voti = votiRaw[nome];
             const totaleVoti = voti.length;
@@ -238,14 +249,13 @@ async function calcolaMediaEVaiAllaClassifica() {
             }
             
             pScores.push({ nome: nome, totale: media });
-            risultatiMedia[nome] = media; // Salva la media nel formato precedente se servisse
+            risultatiMedia[nome] = media;
         }
         
-        // 1. Ordina per totale (media)
         pScores.sort((a, b) => b.totale - a.totale);
 
-        // 2. Raggruppa i partecipanti per parimerito e assegna la posizione
-        window.finalParticipantScores = [];
+        // 1. Raggruppa i partecipanti per parimerito e assegna la posizione
+        let finalParticipantScores = [];
         let currentRank = 0;
         let lastScore = -Infinity;
         let tiedCount = 0;
@@ -255,17 +265,16 @@ async function calcolaMediaEVaiAllaClassifica() {
                 lastScore = p.totale;
                 tiedCount = 0;
             }
-            window.finalParticipantScores.push({ ...p, posizione: currentRank });
+            finalParticipantScores.push({ ...p, posizione: currentRank });
         });
         
-        // 3. Crea l'array per la rivelazione graduale (gruppi di parimerito)
+        // 2. Crea l'array per la rivelazione graduale (gruppi di parimerito)
         window.sortedFinalRanking = []; 
         let currentGroup = [];
         let currentScore = -Infinity;
         let currentPosition = 0;
 
-        // Processa pScores (che è già ordinato)
-        window.finalParticipantScores.forEach(p => {
+        finalParticipantScores.forEach(p => {
             if (p.totale !== currentScore) {
                 if (currentGroup.length > 0) {
                     window.sortedFinalRanking.push({
@@ -281,7 +290,6 @@ async function calcolaMediaEVaiAllaClassifica() {
                 currentGroup.push(p);
             }
         });
-        // Aggiunge l'ultimo gruppo
         if (currentGroup.length > 0) {
             window.sortedFinalRanking.push({
                 nomi: currentGroup.map(item => item.nome),
@@ -290,10 +298,10 @@ async function calcolaMediaEVaiAllaClassifica() {
             });
         }
         
-        // Rivelazione graduale: la classifica inizia dal fondo (posizione più alta = indice 0)
+        // Rivelazione graduale: la classifica inizia dal fondo (posizioni più basse)
         window.sortedFinalRanking.reverse();
         
-        // 4. Inizia la presentazione dinamica
+        // 3. Inizia la presentazione dinamica
         window.finalRankingIndex = 0;
         window.podiumState = 0;
         goToFinalRankingView();
@@ -315,12 +323,19 @@ function goToFinalRankingView() {
     const view = document.getElementById('classifica-view');
     view.style.display = 'flex';
     
-    // Inizializzazione della vista a podio
     document.getElementById('ranking-list-container').innerHTML = '';
     document.getElementById('podiumContainer').style.display = 'none';
     document.getElementById('podiumContainer').classList.remove('visible'); 
     
     window.page3Active = true;
+    
+    // Assicura che i contenitori podio siano puliti prima di iniziare
+    document.getElementById('podiumPos1').innerHTML = '';
+    document.getElementById('podiumPos2').innerHTML = '';
+    document.getElementById('podiumPos3').innerHTML = '';
+    document.getElementById('podiumPos1').classList.remove('visible', 'show-name');
+    document.getElementById('podiumPos2').classList.remove('visible', 'show-name');
+    document.getElementById('podiumPos3').classList.remove('visible', 'show-name');
 }
 
 // Chiude la classifica e torna alla vista principale
@@ -332,17 +347,18 @@ window.closeFinalRankingView = function() {
     window.finalRankingIndex = 0;
     window.podiumState = 0;
     
-    // Ricarica i conteggi per aggiornare la lista iniziale
     caricaConteggiVoti(); 
 };
 
-// Funzione che gestisce l'animazione graduale
+// Funzione che gestisce l'animazione graduale (CORE DELLA TUA RICHIESTA)
 window.showNextRankingRow = function() { 
     if (!window.page3Active) return; 
     
-    const rList = document.getElementById('ranking-list-container');
+    const rListContainer = document.getElementById('ranking-list-container');
     const pCont = document.getElementById('podiumContainer');
-    
+    const podiumOverlay = document.getElementById('podiumOverlay');
+    const vittoriaAudio = document.getElementById('vittoriaAudio');
+
     const g1 = window.sortedFinalRanking.find(g => g.posizione === 1);
     const g2 = window.sortedFinalRanking.find(g => g.posizione === 2);
     const g3 = window.sortedFinalRanking.find(g => g.posizione === 3);
@@ -355,18 +371,23 @@ window.showNextRankingRow = function() {
         if (window.finalRankingIndex >= window.sortedFinalRanking.length || 
             (window.sortedFinalRanking[window.finalRankingIndex]?.posizione <= threshPosition)) { 
             
-            // FASE 1: NASCONDI LISTA E MOSTRA PODIO
             if (window.sortedFinalRanking.length > 0) { 
-                rList.style.display = 'none'; 
-                pCont.style.display = 'flex'; 
-                void pCont.offsetWidth; 
-                pCont.classList.add('visible'); 
-                window.podiumState = 1; 
+                // FASE 1: NASCONDI LISTA E PREPARA IL PODIO
+                rListContainer.style.opacity = '0'; // Dissolvenza della lista
                 
-                // Opzionale: Ferma la musica iniziale e metti musica tensione se presente
+                setTimeout(() => {
+                    rListContainer.style.display = 'none';
+                    pCont.style.display = 'flex'; 
+                    podiumOverlay.classList.add('active'); // Dissolvenza per lo sfondo scuro
+                    
+                    void pCont.offsetWidth; 
+                    pCont.classList.add('visible'); // Appare l'immagine del podio
+                    pCont.style.opacity = '1';
+                    
+                    window.podiumState = 1; // Stato: Pronto per rivelare 3° posto
+                }, 500); // Dopo la dissolvenza
             } else {
-                window.page3Active = false;
-                window.closeFinalRankingView(); // Torna indietro se non ci sono dati
+                window.closeFinalRankingView();
             }
             return; 
         } 
@@ -387,20 +408,20 @@ window.showNextRankingRow = function() {
         
         row.innerHTML = `<span class="ranking-pos">${pos}</span>${nameContent}<span class="score">${grp.totale.toFixed(2)}</span>`; 
         
-        // Inserisce il nuovo blocco in cima alla lista (push-up effect)
-        rList.insertBefore(row, rList.firstChild); 
+        rListContainer.insertBefore(row, rListContainer.firstChild); 
         
-        // Forza reflow e attiva animazione
         void row.offsetWidth; 
         row.classList.add('shown');
         
-        // Fa scrollare leggermente verso l'alto
-        rList.scrollTo({ top: 0, behavior: 'smooth' });
-        
+        // Simula lo scroll verso l'alto se ci sono troppi elementi
+        if (rListContainer.children.length > 5) {
+             rListContainer.scrollTop = 0; // Forza lo scroll in cima
+        }
+
         window.finalRankingIndex++; 
         
     } else { 
-        // --- LOGICA RIVELAZIONE PODIO (Posizioni 3, 2, 1) ---
+        // --- LOGICA RIVELAZIONE PODIO (Stato > 0) ---
         window.podiumState++; 
         
         switch (window.podiumState) { 
@@ -409,21 +430,18 @@ window.showNextRankingRow = function() {
                 break; 
                 
             case 3: // RIVELA 2° e 1° CLASSIFICATO (SOLO VOTO)
-                // Usiamo il valore 'true' forzato per il nome e voto perché nel tuo file di esempio era solo 'score'
                 if (g2) populatePodiumElement('podiumPos2', g2, false, true); 
                 if (g1) populatePodiumElement('podiumPos1', g1, false, true); 
                 break; 
                 
             case 4: // RIVELA NOMI (2° e 1° CLASSIFICATO) + EFFETTI FINALI
-                if (g2) populatePodiumElement('podiumPos2', g2, true, true); // showN=true
-                if (g1) populatePodiumElement('podiumPos1', g1, true, true); // showN=true
+                if (g2) populatePodiumElement('podiumPos2', g2, true, true); 
+                if (g1) populatePodiumElement('podiumPos1', g1, true, true); 
                 
                 setTimeout(() => {
-                    // Avvia audio vittoria e coriandoli
-                    const audio = document.getElementById('vittoriaAudio');
-                    if (audio) {
-                        audio.currentTime = 0;
-                        audio.play().catch(e => console.error("Errore play vittoria:", e));
+                    if (vittoriaAudio) {
+                        vittoriaAudio.currentTime = 0;
+                        vittoriaAudio.play().catch(e => console.error("Errore play vittoria:", e));
                     }
                     window.startConfetti(); 
                     
@@ -438,7 +456,6 @@ function populatePodiumElement(id, grp, showN = true, showS = true) {
     const el = document.getElementById(id); 
     if (!el || !grp) return; 
     
-    // Rimuove la classe per l'animazione di riapparizione
     el.classList.remove('show-name'); 
     
     let nHTML = (grp.nomi.length > 1) 
@@ -447,23 +464,17 @@ function populatePodiumElement(id, grp, showN = true, showS = true) {
         
     let sHTML = showS ? `<span class="score">${grp.totale.toFixed(2)}</span>` : `<span class="score">&nbsp;</span>`; 
     
-    // Se non è visibile, impostiamo il contenuto iniziale
-    if (!el.classList.contains('visible')) {
-        el.innerHTML = nHTML + sHTML;
-    } else {
-        // Altrimenti, aggiorniamo solo i contenuti se necessario
-        el.innerHTML = nHTML + sHTML; // Forziamo l'aggiornamento
-    }
+    el.innerHTML = nHTML + sHTML;
     
-    void el.offsetWidth; // Forza reflow
+    void el.offsetWidth; 
     
     if (!el.classList.contains('visible')) el.classList.add('visible'); 
     
-    // Attiva l'animazione di opacità del nome
     if (showN) setTimeout(() => el.classList.add('show-name'), 100); 
 }
 
-// --- FUNZIONI CORIANDOLI (DALL'ESEMPIO) ---
+
+// --- FUNZIONI CORIANDOLI (integrate) ---
 
 window.startConfetti = function() {
     const confettiContainer = document.getElementById('confettiContainer');
