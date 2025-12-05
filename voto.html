@@ -85,7 +85,33 @@
             font-weight: 600;
         }
     </style>
-</head>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js';
+
+        // Configurazione Firebase: I TUOI DATI INSERITI QUI
+        const firebaseConfig = {
+            apiKey: "AIzaSyA-i-_8qSYx_NTBRkjYho3q0msA67P7P7g",
+            authDomain: "televoto.firebaseapp.com",
+            projectId: "televoto",
+            storageBucket: "televoto.firebasestorage.app",
+            messagingSenderId: "310518525910",
+            appId: "1:310518525910:web:b52785433524c4619a7e77"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const VOTI_COLLECTION = "voti"; 
+
+        // Rende le funzioni necessarie globali per lo script sottostante
+        window.db = db;
+        window.VOTI_COLLECTION = VOTI_COLLECTION;
+        window.firestore_collection = collection;
+        window.firestore_addDoc = addDoc;
+        window.firestore_serverTimestamp = serverTimestamp;
+    </script>
+    </head>
 <body>
     <div class="voto-container">
         <h1 id="nomePartecipante"></h1>
@@ -98,13 +124,11 @@
     </div>
 
     <script>
+        // Le costanti e le funzioni sono ora disponibili tramite window.
         let nomePartecipante = '';
         let sessionId = '';
         let isTestMode = false;
         
-        // *** URL API AGGIORNATO ***
-        const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/modve7uqqwetx'; 
-
         function getVotoKey() {
             return 'voto_eseguito_per_' + decodeURIComponent(nomePartecipante) + '_' + sessionId;
         }
@@ -123,6 +147,7 @@
             if (nomePartecipante && sessionId) {
                 document.getElementById('nomePartecipante').textContent = `${nomeDecodificato}`;
                 
+                // Controlla se l'utente ha già votato in questa sessione
                 if (!isTestMode && localStorage.getItem(getVotoKey()) === 'true') {
                     messaggioElemento.textContent = `Hai già votato ${nomeDecodificato} in questa sessione!`;
                     messaggioElemento.style.color = 'orange';
@@ -135,9 +160,17 @@
             }
         });
 
+        // FUNZIONE DI INVIO VOTO (UTILIZZA FIREBASE)
         async function inviaVoto() {
             const voto = parseInt(document.getElementById('votoInput').value);
             const messaggioElemento = document.getElementById('messaggio');
+            
+            if (!window.db) {
+                messaggioElemento.textContent = "Errore di inizializzazione del database. Riprova.";
+                messaggioElemento.style.color = 'var(--error-color)';
+                messaggioElemento.style.display = 'block';
+                return;
+            }
 
             if (isNaN(voto) || voto < 1 || voto > 10) {
                 alert('Inserisci un voto valido tra 1 e 10.');
@@ -145,6 +178,7 @@
             }
 
             if (!isTestMode && localStorage.getItem(getVotoKey()) === 'true') {
+                // ... (Gestione voto doppio)
                 messaggioElemento.textContent = `Hai già votato ${decodeURIComponent(nomePartecipante)} in questa sessione!`;
                 messaggioElemento.style.color = 'orange';
                 messaggioElemento.style.display = 'block';
@@ -152,46 +186,33 @@
                 return; 
             }
 
-            const dati = {
-                data: [{
-                    nome: decodeURIComponent(nomePartecipante),
-                    voto: voto
-                }]
-            };
-
             messaggioElemento.textContent = "Invio del voto in corso...";
             messaggioElemento.style.display = 'block';
             
             try {
-                const response = await fetch(SHEETDB_API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(dati)
+                // Inserimento del voto usando le funzioni globali di Firestore
+                await firestore_addDoc(firestore_collection(db, VOTI_COLLECTION), {
+                    nome: decodeURIComponent(nomePartecipante),
+                    voto: voto.toString(),
+                    timestamp: firestore_serverTimestamp()
                 });
                 
-                if (response.ok) {
-                    if (!isTestMode) {
-                         localStorage.setItem(getVotoKey(), 'true');
-                    }
-                    
-                    messaggioElemento.textContent = "Voto registrato con successo! ✅";
-                    messaggioElemento.style.color = 'var(--success-color)';
-                    
-                    if (!isTestMode) {
-                         document.getElementById('bloccoVoto').style.display = 'none';
-                    } else {
-                         messaggioElemento.style.color = 'orange';
-                         messaggioElemento.textContent = "Voto registrato (Modalità Test). Puoi votare di nuovo."
-                    }
+                if (!isTestMode) {
+                     localStorage.setItem(getVotoKey(), 'true');
+                }
+                
+                messaggioElemento.textContent = "Voto registrato con successo! ✅";
+                messaggioElemento.style.color = 'var(--success-color)';
+                
+                if (!isTestMode) {
+                     document.getElementById('bloccoVoto').style.display = 'none';
                 } else {
-                    messaggioElemento.textContent = "Errore durante la registrazione del voto.";
-                    messaggioElemento.style.color = 'var(--error-color)';
+                     messaggioElemento.style.color = 'orange';
+                     messaggioElemento.textContent = "Voto registrato (Modalità Test). Puoi votare di nuovo."
                 }
                 
             } catch (error) {
-                messaggioElemento.textContent = `Errore di connessione. Verifica la tua connessione internet.`;
+                messaggioElemento.textContent = `Errore di connessione a Firebase. Riprova.`;
                 messaggioElemento.style.color = 'var(--error-color)';
                 console.error('Errore nell\'invio del voto:', error);
             }
