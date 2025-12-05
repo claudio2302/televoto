@@ -3,7 +3,7 @@ let partecipanti = {};
 const STORAGE_KEY_NOMI = 'televotoNomiOnline';
 
 // Variabile booleana per la modalità test
-const IS_TEST_MODE = true; 
+const IS_TEST_MODE = false; 
 
 // Variabile per l'ID di sessione
 const SESSION_ID = Date.now(); 
