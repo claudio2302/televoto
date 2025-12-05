@@ -2,158 +2,140 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Gestione Televoto | Panel Host</title>
+    <title>Gestione Televoto | Host Panel</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
-            --primary-color: #007bff;
-            --secondary-color: #28a745;
-            --danger-color: #dc3545;
-            --bg-color: #f8f9fa;
+            /* Colori Gradiente */
+            --gradient-start: #00796B; /* Ottanio scuro */
+            --gradient-end: #03A9F4; /* Blu Cyano */
+            --white-tint: #F3F6F9;
+            /* Colori Pulsanti e Interfaccia */
+            --primary-button: #FF5722; /* Arancione Acceso */
+            --secondary-button: #00BCD4; /* Turchese */
+            --danger-color: #EF5350; /* Rosso */
             --card-bg: #ffffff;
-            --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --visited-bg: #EFEFEF; /* Tonalità più chiara per visitato */
+            --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
         body {
             font-family: 'Poppins', sans-serif;
-            background-color: var(--bg-color);
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
             color: #333;
             padding: 0;
             margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
             min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Allinea in alto */
         }
         .container {
             width: 90%;
-            max-width: 1200px;
-            padding: 30px 20px;
+            max-width: 600px;
+            margin-top: 30px;
+            background-color: var(--white-tint);
+            border-radius: 15px;
+            box-shadow: var(--shadow-light);
+            padding: 20px;
+            min-height: 70vh;
+            position: relative;
         }
         h1 {
-            color: var(--primary-color);
+            color: var(--gradient-start);
             text-align: center;
             margin-bottom: 25px;
             font-weight: 800;
         }
-        /* --- Controlli Superiore --- */
-        .header-controls {
+        /* --- Pulsante Aggiungi (Cerchio +) --- */
+        #addBtn {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: var(--primary-button);
+            color: white;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s, transform 0.2s;
+            z-index: 5;
+        }
+        #addBtn:hover {
+            background-color: #E64A19;
+            transform: scale(1.05);
+        }
+        /* --- Lista Partecipanti (A Colonna) --- */
+        #listaPartecipanti {
+            list-style: none;
+            padding: 0;
+            max-height: calc(70vh - 150px); /* Altezza fissa con scroll */
+            overflow-y: auto;
+        }
+        .partecipante-card {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            width: 100%;
-            margin-bottom: 30px;
-        }
-        .input-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        #nomeInput {
-            padding: 10px 15px;
-            border: 2px solid #ccc;
-            border-radius: 8px;
-            font-size: 1em;
-            transition: border-color 0.3s;
-            width: 250px;
-        }
-        #nomeInput:focus {
-            border-color: var(--primary-color);
-            outline: none;
-        }
-        #aggiungiBtn, #modeToggle {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1em;
-            transition: background-color 0.3s, transform 0.2s;
-        }
-        #aggiungiBtn:hover, #modeToggle:hover {
-            background-color: #0056b3;
-            transform: translateY(-2px);
-        }
-        /* --- Lista Partecipanti (Centrale) --- */
-        #listaPartecipanti {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
-            margin: 40px 0;
-            padding: 0;
-            list-style: none;
-        }
-        .partecipante-card {
             background-color: var(--card-bg);
-            border-radius: 12px;
-            box-shadow: var(--shadow-light);
-            padding: 20px;
-            text-align: center;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            padding: 15px;
+            margin-bottom: 10px;
             cursor: pointer;
-            transition: transform 0.3s, box-shadow 0.3s;
-            position: relative;
-            animation: fadeIn 0.5s ease-out;
-            border-left: 5px solid var(--secondary-color);
+            transition: background-color 0.3s, transform 0.2s;
+            border-left: 5px solid var(--secondary-button);
         }
         .partecipante-card:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            transform: translateX(5px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .partecipante-card.visited {
+            background-color: var(--visited-bg); /* Sfondo più chiaro dopo la visita */
+            border-left-color: var(--gradient-start);
         }
         .partecipante-card h3 {
-            margin: 0 0 5px 0;
-            color: #333;
-            font-size: 1.2em;
+            margin: 0;
+            font-size: 1.1em;
             font-weight: 600;
         }
-        .partecipante-card p {
-            margin: 0;
-            font-size: 0.9em;
-            color: #666;
-        }
         .remove-btn {
-            position: absolute;
-            top: 5px;
-            right: 5px;
             background: none;
             border: none;
             color: var(--danger-color);
             cursor: pointer;
             font-size: 1.2em;
-            opacity: 0.6;
+            opacity: 0.7;
             transition: opacity 0.3s;
         }
         .remove-btn:hover { opacity: 1; }
-        /* --- Bottom Bar --- */
-        .bottom-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background-color: var(--card-bg);
-            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
-            padding: 15px 5%;
-            display: flex;
-            justify-content: flex-end;
-            gap: 15px;
-            z-index: 10;
-        }
+
+        /* --- Pulsante Classifica (In basso a destra) --- */
         #classificaBtn {
-            background-color: var(--secondary-color);
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--secondary-button);
             color: white;
             border: none;
-            padding: 12px 30px;
-            border-radius: 25px;
+            padding: 12px 25px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 1.1em;
+            font-size: 1em;
             font-weight: 600;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             transition: background-color 0.3s, transform 0.2s;
+            z-index: 5;
         }
         #classificaBtn:hover {
-            background-color: #1e7e34;
+            background-color: #0097A7;
             transform: scale(1.05);
         }
-        /* --- Modale QR Code --- */
+        
+        /* --- Modale Generale --- */
         .modal {
             display: none; 
             position: fixed; 
@@ -163,42 +145,75 @@
             width: 100%;
             height: 100%;
             overflow: auto;
-            background-color: rgba(0,0,0,0.6);
-            backdrop-filter: blur(5px);
+            background-color: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
             animation: fadeIn 0.3s;
+            justify-content: center;
+            align-items: center;
         }
         .modal-content {
             background-color: var(--card-bg);
-            margin: 15% auto;
             padding: 30px;
             border-radius: 15px;
+            max-width: 350px;
             width: 80%;
-            max-width: 400px;
             text-align: center;
             box-shadow: var(--shadow-light);
             animation: slideIn 0.3s ease-out;
         }
         .modal-content h2 {
-            color: var(--primary-color);
+            color: var(--primary-button);
             margin-bottom: 20px;
+            font-weight: 600;
         }
-        .modal-content button {
-            margin-top: 20px;
-            padding: 10px 20px;
+        /* Modale Inserimento Nome */
+        #inputModal input {
+            width: calc(100% - 30px);
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            border: 2px solid #ccc;
             border-radius: 8px;
-            background-color: var(--primary-color);
+        }
+        #inputModal button {
+            background-color: var(--secondary-button);
             color: white;
+            padding: 10px 20px;
             border: none;
+            border-radius: 8px;
             cursor: pointer;
         }
-        /* --- Classifica --- */
-        #classifica {
+        
+        /* Modale QR Code */
+        #qrModal canvas {
+            display: block;
+            margin: 0 auto;
+        }
+
+        /* --- Vista Classifica (PULITA) --- */
+        #classifica-view {
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+            display: none; /* Inizialmente nascosta */
+            flex-direction: column;
+            align-items: center;
+            padding-top: 50px;
+            z-index: 50;
+        }
+        #classifica-container {
+            width: 90%;
+            max-width: 600px;
             background-color: var(--card-bg);
             padding: 30px;
             border-radius: 15px;
             box-shadow: var(--shadow-light);
-            margin-top: 30px;
+        }
+        #classifica-view h1 {
+            color: var(--gradient-start);
+            margin-bottom: 40px;
         }
         #listaClassifica {
             list-style: none;
@@ -208,91 +223,92 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 0;
+            padding: 15px 10px;
             border-bottom: 1px solid #eee;
-            font-size: 1.1em;
+            font-size: 1.2em;
+            background-color: #fff;
+            margin-bottom: 5px;
+            border-radius: 5px;
             animation: slideInUp 0.3s ease-out;
         }
         .rank {
             font-weight: 800;
-            color: var(--primary-color);
+            color: var(--primary-button);
             width: 30px;
+            text-align: left;
         }
         .avg {
             font-weight: 600;
-            color: var(--secondary-color);
+            color: var(--secondary-button);
+            text-align: right;
         }
-
+        .name {
+            flex-grow: 1;
+            text-align: left;
+            margin-left: 15px;
+        }
+        #resetClassificaBtn {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background-color: var(--danger-color); /* Rosso */
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            transition: background-color 0.3s;
+        }
+        #resetClassificaBtn:hover {
+            background-color: #C62828;
+        }
         /* --- Animazioni --- */
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        @keyframes slideIn {
-            from { transform: translateY(-50px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes slideInUp {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        /* --- Footer Info --- */
-        .footer-info {
-            position: fixed;
-            bottom: 80px; /* Sopra la bottom bar */
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.8em;
-            color: #888;
-            padding: 5px 10px;
-            background: #fff;
-            border-radius: 5px;
-            box-shadow: var(--shadow-light);
-        }
-
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Pannello di Gestione Televoto</h1>
-
-        <div class="header-controls">
-            <div class="input-group">
-                <input type="text" id="nomeInput" placeholder="Nuovo partecipante (Max 25)">
-                <button id="aggiungiBtn" onclick="aggiungiPartecipante()">Aggiungi</button>
-            </div>
-            <div>
-                <button id="modeToggle" onclick="toggleTestMode()">Modalità: **Test**</button>
-                <button id="resetButton" onclick="resetCompleto()">Reset Completo</button>
-            </div>
-        </div>
+    <div class="container" id="main-container">
+        <h1>Gestione Televoto</h1>
+        <button id="addBtn" onclick="apriModaleInserimento()">
+            <i class="fa-solid fa-plus"></i>
+        </button>
         
         <div id="listaPartecipanti">
             </div>
 
-        <div id="classifica" style="display:none;">
-            <h2>Classifica Finale</h2>
+        <button id="classificaBtn" onclick="calcolaMediaEVaiAllaClassifica()">
+            Vai alla Classifica
+        </button>
+    </div>
+    
+    <div id="inputModal" class="modal" onclick="chiudiModale(event, 'inputModal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h2>Aggiungi Partecipante</h2>
+            <input type="text" id="modalNomeInput" placeholder="Inserisci nome">
+            <button onclick="salvaNomeDaModale()">Salva</button>
+        </div>
+    </div>
+    
+    <div id="qrModal" class="modal" onclick="chiudiModale(event, 'qrModal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h2 id="modalNomeQr"></h2>
+            <p style="margin-bottom: 20px;">Scansiona il codice per votare:</p>
+            <canvas id="modalQrCanvas" style="max-width: 100%; height: auto;"></canvas>
+            </div>
+    </div>
+    
+    <div id="classifica-view">
+        <div id="classifica-container">
+            <h1>Classifica Finale</h1>
             <ul id="listaClassifica"></ul>
         </div>
-    </div>
-    
-    <div id="qrModal" class="modal" onclick="chiudiModale(event)">
-        <div class="modal-content">
-            <h2 id="modalNome"></h2>
-            <p style="margin-bottom: 15px;">Scansiona il codice per votare:</p>
-            <canvas id="modalQrCanvas" style="max-width: 100%; height: auto;"></canvas>
-            <button onclick="chiudiModale()">OK</button>
-        </div>
-    </div>
-    
-    <div id="testModeIndicator" class="footer-info">
-        Modalità Corrente: **Test**
-    </div>
-
-    <div class="bottom-bar">
-        <button id="classificaBtn" onclick="calcolaMediaEVaiAllaClassifica()">Vai alla Classifica</button>
+        <button id="resetClassificaBtn" onclick="resetCompleto()">Reset Completo</button>
     </div>
 
     <script src="script.js"></script>
