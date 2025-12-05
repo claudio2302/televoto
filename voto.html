@@ -31,12 +31,18 @@
             margin: 0;
         }
         .voto-container {
+            /* INIZIALMENTE NASCOSTO */
+            display: none; 
             background-color: var(--card-bg);
             padding: 40px 30px;
             border-radius: 15px;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
             max-width: 400px;
             width: 90%;
+        }
+        #loader {
+            color: white;
+            font-size: 1.2em;
         }
         h1 {
             color: var(--primary-blue);
@@ -90,6 +96,20 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     
     <script src="firebase_init.js"></script> 
+    </head>
+<body>
+    <div id="loader">Caricamento database...</div>
+
+    <div class="voto-container" id="voto-container">
+        <h1 id="nomePartecipante"></h1>
+        <div id="bloccoVoto" class="blocco-voto">
+            <h2>Voto da 1 a 10</h2>
+            <input type="number" id="votoInput" min="1" max="10" value="1" required>
+            <button onclick="inviaVoto()">Conferma Voto</button>
+        </div>
+        <p id="messaggio" style="display:none;"></p>
+    </div>
+
     <script>
         let nomePartecipante = '';
         let sessionId = '';
@@ -99,7 +119,21 @@
             return 'voto_eseguito_per_' + decodeURIComponent(nomePartecipante) + '_' + sessionId;
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        function initVotoPage() {
+            const loader = document.getElementById('loader');
+            const votoContainer = document.getElementById('voto-container');
+            const messaggioElemento = document.getElementById('messaggio');
+
+            if (!window.db) {
+                // Se Firebase non è pronto dopo l'evento, mostra un errore
+                loader.textContent = "Errore Critico: Impossibile connettersi al database.";
+                return;
+            }
+
+            // Database pronto, nasconde il loader e mostra il container
+            loader.style.display = 'none';
+            votoContainer.style.display = 'block';
+
             const params = new URLSearchParams(window.location.search);
             nomePartecipante = params.get('nome');
             sessionId = params.get('session');
@@ -107,24 +141,7 @@
             
             const nomeDecodificato = decodeURIComponent(nomePartecipante);
             
-            const messaggioElemento = document.getElementById('messaggio');
             const bloccoVoto = document.getElementById('bloccoVoto');
-
-            // Verifica l'inizializzazione prima di procedere
-            if (!window.db) {
-                // Se Firebase non è pronto, attende o mostra l'errore
-                 window.addEventListener('firebaseReady', () => {
-                    if (window.db) {
-                        // Riprova l'inizializzazione dopo l'evento
-                        if (nomePartecipante && sessionId) {
-                           document.getElementById('nomePartecipante').textContent = `${nomeDecodificato}`;
-                        }
-                    } else {
-                        document.body.innerHTML = '<h1>Errore: Impossibile connettersi al database. Riprova.</h1>';
-                    }
-                 });
-            }
-
 
             if (nomePartecipante && sessionId) {
                 document.getElementById('nomePartecipante').textContent = `${nomeDecodificato}`;
@@ -139,9 +156,21 @@
                 document.getElementById('nomePartecipante').textContent = 'Errore: Link di voto non valido.';
                 bloccoVoto.style.display = 'none';
             }
+        }
+        
+        // Ascolta l'evento che conferma l'inizializzazione del DB
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.db) {
+                initVotoPage();
+            } else {
+                window.addEventListener('firebaseReady', initVotoPage);
+            }
         });
 
+
         async function inviaVoto() {
+            const messaggioElemento = document.getElementById('messaggio');
+            
             if (!window.db) {
                 messaggioElemento.textContent = "Errore di inizializzazione del database. Ricarica la pagina.";
                 messaggioElemento.style.color = 'var(--error-color)';
@@ -150,7 +179,7 @@
             }
 
             const voto = parseInt(document.getElementById('votoInput').value);
-            const messaggioElemento = document.getElementById('messaggio');
+            
 
             if (isNaN(voto) || voto < 1 || voto > 10) {
                 alert('Inserisci un voto valido tra 1 e 10.');
