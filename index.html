@@ -2,29 +2,30 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Lista Concorrenti</title>
+    <title>LISTA CONCORRENTI</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
-            /* Nuovi Colori Gradiente (Ottanio, Blu Scuro, Blu) */
-            --gradient-start: #00796B; /* Ottanio */
-            --gradient-mid: #004488;  /* Blu Scuro Aggiunto */
-            --gradient-end: #03A9F4;  /* Blu Cyano */
+            /* Nuovi Colori Gradiente */
+            --gradient-start: #00796B; /* Ottanio (Predominante) */
+            --gradient-mid: #03A9F4;  /* Blu Cyano */
+            --gradient-end: #004488;  /* Blu Scuro */
             /* Colori Interfaccia */
-            --primary-blue: #2196F3; /* Bel Blu Uniforme */
-            --primary-button: #FF5722; /* Arancione Acceso per contrasto */
-            --secondary-button: var(--primary-blue);
+            --primary-blue: #2196F3; /* Bel Blu Uniforme per Card e Plus */
+            --primary-button: #FF5722; /* Arancione Acceso (Reset) */
+            --secondary-button: #00BCD4; /* Turchese (Classifica) */
             --danger-color: #EF5350; /* Rosso */
-            --card-bg: var(--primary-blue); /* Card dei partecipanti in Blu */
-            --visited-bg: #4FC3F7; /* Tonalità più chiara di blu per visitato */
+            --card-bg: var(--primary-blue);
+            --visited-bg: #4FC3F7; 
             --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.15);
             --text-color-light: white;
             --text-color-dark: #333;
         }
         body {
             font-family: 'Poppins', sans-serif;
+            /* Ordine modificato: Ottanio -> Blu Cyano -> Blu Scuro */
             background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 50%, var(--gradient-end) 100%);
             color: var(--text-color-dark);
             padding: 0;
@@ -41,45 +42,45 @@
             position: relative;
         }
         h1 {
-            color: var(--text-color-light); /* Titolo in bianco */
+            color: var(--text-color-light); 
             text-align: center;
             margin-bottom: 30px;
             font-weight: 800;
         }
         /* --- Pulsante Aggiungi (Cerchio +) --- */
         #addBtn {
-            position: absolute;
-            top: 10px; /* Abbassato leggermente */
-            right: 0px; 
+            position: fixed; /* Fisso sullo schermo */
+            top: 25px;
+            right: 25px;
             width: 50px;
             height: 50px;
             border-radius: 50%;
-            background-color: var(--primary-blue); /* Blu */
+            background-color: var(--primary-blue);
             color: white;
             border: none;
             font-size: 1.5em;
             cursor: pointer;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             transition: background-color 0.3s, transform 0.2s;
-            z-index: 5;
+            z-index: 10;
         }
         #addBtn:hover {
-            background-color: #1565C0; /* Blu più scuro al passaggio */
+            background-color: #1565C0; 
             transform: scale(1.05);
         }
         /* --- Lista Partecipanti (A Colonna) --- */
         #listaPartecipanti {
             list-style: none;
             padding: 0;
-            max-height: 75vh; /* Scrollabile */
+            max-height: 75vh;
             overflow-y: auto;
         }
         .partecipante-card {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background-color: var(--card-bg);
-            color: var(--text-color-light); /* Testo bianco */
+            background-color: var(--card-bg); /* Blu Uniforme */
+            color: var(--text-color-light); 
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             padding: 15px;
@@ -92,7 +93,7 @@
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
         }
         .partecipante-card.visited {
-            background-color: var(--visited-bg); /* Sfondo più chiaro dopo la visita */
+            background-color: var(--visited-bg); /* Tonalità più chiara di blu per visitato */
         }
         .partecipante-card h3 {
             margin: 0;
@@ -161,7 +162,7 @@
             position: fixed;
             bottom: 25px;
             right: 25px;
-            background-color: var(--primary-button);
+            background-color: var(--secondary-button); /* Turchese */
             color: white;
             padding: 15px 30px;
             border-radius: 8px;
@@ -173,7 +174,7 @@
             z-index: 5;
         }
         #classificaBtn:hover {
-            background-color: #E64A19;
+            background-color: #008C9E;
             transform: scale(1.05);
         }
         
@@ -185,7 +186,7 @@
             width: 100%;
             height: 100%;
             background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 50%, var(--gradient-end) 100%);
-            display: none; /* Inizialmente nascosta */
+            display: none;
             flex-direction: column;
             align-items: center;
             padding-top: 30px;
@@ -209,14 +210,14 @@
             margin-bottom: 12px;
             border-radius: 8px;
             /* Stile della card come la lista iniziale */
-            background-color: var(--card-bg);
+            background-color: var(--card-bg); 
             color: var(--text-color-light);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             font-size: 1.2em;
         }
         .rank {
             font-weight: 800;
-            color: var(--primary-button); /* Posizione in Arancione */
+            color: var(--primary-button); 
             width: 30px;
             text-align: left;
         }
@@ -232,9 +233,9 @@
         }
         #resetClassificaBtn {
             position: absolute;
-            bottom: 25px;
+            bottom: 25px; /* Spostato più in alto rispetto al fondo */
             right: 25px;
-            background-color: var(--danger-color); /* Rosso */
+            background-color: var(--danger-color);
             color: white;
             padding: 15px 30px;
             border: none;
@@ -254,15 +255,15 @@
 <body>
 
     <div class="main-view" id="main-view">
-        <h1>Lista Concorrenti</h1>
-        <button id="addBtn" onclick="apriModaleInserimento()">
-            <i class="fa-solid fa-plus"></i>
-        </button>
+        <h1>LISTA CONCORRENTI</h1>
         
         <div id="listaPartecipanti">
             </div>
-
-        </div>
+    </div>
+    
+    <button id="addBtn" onclick="apriModaleInserimento()">
+        <i class="fa-solid fa-plus"></i>
+    </button>
     
     <button id="classificaBtn" onclick="calcolaMediaEVaiAllaClassifica()">
         Vai alla Classifica
@@ -285,7 +286,7 @@
     </div>
     
     <div id="classifica-view">
-        <h1>Classifica Finale</h1>
+        <h1>CLASSIFICA FINALE</h1>
         <ul id="listaClassifica"></ul>
         <button id="resetClassificaBtn" onclick="resetCompleto()">RESET</button>
     </div>
