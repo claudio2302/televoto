@@ -5,6 +5,7 @@
     <title>Inserisci il tuo Voto</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
+        /* ... (stili CSS invariati) ... */
         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
         h1 { color: #007bff; }
         input[type="number"] { padding: 10px; font-size: 1.5em; width: 80px; text-align: center; margin-bottom: 20px; }
@@ -26,20 +27,40 @@
 
     <script>
         let nomePartecipante = '';
+        let sessionId = ''; // Variabile per l'ID di sessione
         
         // **!!! DEVI INCOLLARE QUI L'URL API DI SHEETDB.IO !!!**
-        // Questo sarà l'endpoint che riceve i voti e li salva nel tuo Foglio Google.
         const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/modve7uqqwetx'; 
 
-        // 1. Legge il nome del partecipante dall'URL
+        // Funzione per generare la chiave di verifica unica (ORA INCLUDE LA SESSIONE)
+        function getVotoKey() {
+            // Chiave unica = "voto_eseguito_per_" + Nome + "_" + ID Sessione
+            return 'voto_eseguito_per_' + decodeURIComponent(nomePartecipante) + '_' + sessionId;
+        }
+
+        // 1. Legge il nome, la sessione e verifica il voto all'avvio
         document.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
             nomePartecipante = params.get('nome');
-            if (nomePartecipante) {
-                document.getElementById('nomePartecipante').textContent = `Vota per ${decodeURIComponent(nomePartecipante)}`;
+            sessionId = params.get('session'); // Leggiamo il parametro di sessione
+            const nomeDecodificato = decodeURIComponent(nomePartecipante);
+            
+            const messaggioElemento = document.getElementById('messaggio');
+            const bloccoVoto = document.getElementById('bloccoVoto');
+
+            if (nomePartecipante && sessionId) {
+                document.getElementById('nomePartecipante').textContent = `Vota per ${nomeDecodificato}`;
+                
+                // CONTROLLO FONDAMENTALE: Verifica se il flag è già presente per QUESTA sessione
+                if (localStorage.getItem(getVotoKey()) === 'true') {
+                    messaggioElemento.textContent = `Hai già votato ${nomeDecodificato} in questa sessione!`;
+                    messaggioElemento.style.color = 'orange';
+                    messaggioElemento.style.display = 'block';
+                    bloccoVoto.style.display = 'none';
+                }
             } else {
-                document.getElementById('nomePartecipante').textContent = 'Errore: Partecipante non identificato.';
-                document.getElementById('bloccoVoto').style.display = 'none';
+                document.getElementById('nomePartecipante').textContent = 'Errore: Partecipante o Sessione non identificata.';
+                bloccoVoto.style.display = 'none';
             }
         });
 
@@ -52,8 +73,16 @@
                 alert('Inserisci un voto valido tra 1 e 10.');
                 return;
             }
-            
-            // Dati da inviare a SheetDB. La chiave "nome" e "voto" corrisponde all'intestazione del Foglio Google.
+
+            // Verifica anti-frode e anti-doppio-click
+            if (localStorage.getItem(getVotoKey()) === 'true') {
+                messaggioElemento.textContent = `Hai già votato ${decodeURIComponent(nomePartecipante)} in questa sessione!`;
+                messaggioElemento.style.color = 'orange';
+                messaggioElemento.style.display = 'block';
+                document.getElementById('bloccoVoto').style.display = 'none';
+                return; 
+            }
+
             const dati = {
                 data: [{
                     nome: decodeURIComponent(nomePartecipante),
@@ -74,6 +103,9 @@
                 });
                 
                 if (response.ok) {
+                    // *** SALVATAGGIO DEL FLAG SU LOCALSTORAGE DOPO IL SUCCESSO ***
+                    localStorage.setItem(getVotoKey(), 'true');
+                    
                     messaggioElemento.textContent = "Voto registrato con successo! ✅";
                     messaggioElemento.style.color = 'green';
                     document.getElementById('bloccoVoto').style.display = 'none';
