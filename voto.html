@@ -7,14 +7,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --gradient-start: #00796B; /* Ottanio scuro */
-            --gradient-end: #03A9F4; /* Blu Cyano */
-            --primary-button: #FF5722; /* Arancione Acceso (Contrasto) */
+            --gradient-start: #00796B;
+            --gradient-mid: #03A9F4;
+            --gradient-end-dark: #004488;
+            --gradient-end-accent: #9C27B0; 
+            --secondary-button: #00BCD4; /* Azzurro acceso per il voto */
             --card-bg: #ffffff;
+            --success-color: var(--secondary-button); /* Successo diventa Azzurro */
+            --error-color: #EF5350; /* Rosso per l'errore grave (mantenuto) */
         }
         body {
             font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 40%, var(--gradient-end-dark) 80%, var(--gradient-end-accent) 100%);
             color: #333;
             text-align: center;
             padding: 20px;
@@ -56,13 +60,13 @@
             transition: border-color 0.3s;
         }
         input[type="number"]:focus {
-            border-color: var(--primary-button);
+            border-color: var(--secondary-button); /* Colore Focus Azzurro */
             outline: none;
         }
         button {
             padding: 15px 40px;
             font-size: 1.2em;
-            background-color: var(--primary-button);
+            background-color: var(--secondary-button); /* Pulsante Conferma Azzurro */
             color: white;
             border: none;
             border-radius: 10px;
@@ -71,7 +75,7 @@
             width: 100%;
         }
         button:hover {
-            background-color: #E64A19;
+            background-color: #008C9E;
             transform: translateY(-2px);
         }
         #messaggio {
@@ -100,17 +104,15 @@
         // *** URL API AGGIORNATO ***
         const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/modve7uqqwetx'; 
 
-        // Funzione per generare la chiave di verifica unica (ID Sessione + Nome)
         function getVotoKey() {
             return 'voto_eseguito_per_' + decodeURIComponent(nomePartecipante) + '_' + sessionId;
         }
 
-        // 1. Legge i parametri e verifica il voto all'avvio
         document.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
             nomePartecipante = params.get('nome');
             sessionId = params.get('session');
-            isTestMode = (params.get('test') === 'true'); // Legge il parametro test
+            isTestMode = (params.get('test') === 'true');
             
             const nomeDecodificato = decodeURIComponent(nomePartecipante);
             
@@ -120,10 +122,9 @@
             if (nomePartecipante && sessionId) {
                 document.getElementById('nomePartecipante').textContent = `${nomeDecodificato}`;
                 
-                // CONTROLLO VOTO SINGOLO (SOLO SE NON SIAMO IN MODALITÀ TEST)
                 if (!isTestMode && localStorage.getItem(getVotoKey()) === 'true') {
                     messaggioElemento.textContent = `Hai già votato ${nomeDecodificato} in questa sessione!`;
-                    messaggioElemento.style.color = 'orange';
+                    messaggioElemento.style.color = 'orange'; // Mantenuto arancione per l'avviso
                     messaggioElemento.style.display = 'block';
                     bloccoVoto.style.display = 'none';
                 }
@@ -133,7 +134,6 @@
             }
         });
 
-        // 2. Funzione per inviare il voto
         async function inviaVoto() {
             const voto = parseInt(document.getElementById('votoInput').value);
             const messaggioElemento = document.getElementById('messaggio');
@@ -143,7 +143,6 @@
                 return;
             }
 
-            // Blocco voto multiplo se NON è modalità test
             if (!isTestMode && localStorage.getItem(getVotoKey()) === 'true') {
                 messaggioElemento.textContent = `Hai già votato ${decodeURIComponent(nomePartecipante)} in questa sessione!`;
                 messaggioElemento.style.color = 'orange';
@@ -172,30 +171,27 @@
                 });
                 
                 if (response.ok) {
-                    // Salva il flag solo se NON siamo in modalità test
                     if (!isTestMode) {
                          localStorage.setItem(getVotoKey(), 'true');
                     }
                     
                     messaggioElemento.textContent = "Voto registrato con successo! ✅";
-                    messaggioElemento.style.color = 'green';
+                    messaggioElemento.style.color = 'var(--success-color)'; // Azzurro successo
                     
-                    // Nasconde l'interfaccia di voto solo se non siamo in modalità test
                     if (!isTestMode) {
                          document.getElementById('bloccoVoto').style.display = 'none';
                     } else {
-                         // Se è test, lascia il blocco voto visibile per votare di nuovo
                          messaggioElemento.style.color = 'orange';
                          messaggioElemento.textContent = "Voto registrato (Modalità Test). Puoi votare di nuovo."
                     }
                 } else {
                     messaggioElemento.textContent = "Errore durante la registrazione del voto.";
-                    messaggioElemento.style.color = 'red';
+                    messaggioElemento.style.color = 'var(--error-color)'; // Rosso errore
                 }
                 
             } catch (error) {
                 messaggioElemento.textContent = `Errore di connessione. Verifica la tua connessione internet.`;
-                messaggioElemento.style.color = 'red';
+                messaggioElemento.style.color = 'var(--error-color)'; // Rosso errore
                 console.error('Errore nell\'invio del voto:', error);
             }
         }
