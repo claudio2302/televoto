@@ -12,7 +12,7 @@
             --gradient-end-dark: #004488;
             --gradient-end-accent: #9C27B0; 
             --secondary-button: #00BCD4; 
-            --primary-blue: #2196F3; /* Colore Card */
+            --primary-blue: #2196F3;
             --card-bg: #ffffff;
             --success-color: var(--secondary-button); 
             --error-color: #EF5350; 
@@ -39,7 +39,7 @@
             width: 90%;
         }
         h1 {
-            color: var(--primary-blue); /* Nome Partecipante in Blu (come le card) */
+            color: var(--primary-blue);
             font-weight: 800;
             margin-bottom: 5px;
             font-size: 1.8em;
@@ -86,10 +86,9 @@
         }
     </style>
 
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js';
-
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script>
         // Configurazione Firebase: I TUOI DATI INSERITI QUI
         const firebaseConfig = {
             apiKey: "AIzaSyA-i-_8qSYx_NTBRkjYho3q0msA67P7P7g",
@@ -100,16 +99,9 @@
             appId: "1:310518525910:web:b52785433524c4619a7e77"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const VOTI_COLLECTION = "voti"; 
-
-        // Rende le funzioni necessarie globali per lo script sottostante
-        window.db = db;
-        window.VOTI_COLLECTION = VOTI_COLLECTION;
-        window.firestore_collection = collection;
-        window.firestore_addDoc = addDoc;
-        window.firestore_serverTimestamp = serverTimestamp;
+        const app = firebase.initializeApp(firebaseConfig);
+        window.db = app.firestore(); // Rende disponibile il database
+        window.VOTI_COLLECTION = "voti"; 
     </script>
     </head>
 <body>
@@ -124,7 +116,6 @@
     </div>
 
     <script>
-        // Le costanti e le funzioni sono ora disponibili tramite window.
         let nomePartecipante = '';
         let sessionId = '';
         let isTestMode = false;
@@ -147,7 +138,6 @@
             if (nomePartecipante && sessionId) {
                 document.getElementById('nomePartecipante').textContent = `${nomeDecodificato}`;
                 
-                // Controlla se l'utente ha già votato in questa sessione
                 if (!isTestMode && localStorage.getItem(getVotoKey()) === 'true') {
                     messaggioElemento.textContent = `Hai già votato ${nomeDecodificato} in questa sessione!`;
                     messaggioElemento.style.color = 'orange';
@@ -160,17 +150,17 @@
             }
         });
 
-        // FUNZIONE DI INVIO VOTO (UTILIZZA FIREBASE)
         async function inviaVoto() {
-            const voto = parseInt(document.getElementById('votoInput').value);
-            const messaggioElemento = document.getElementById('messaggio');
-            
             if (!window.db) {
-                messaggioElemento.textContent = "Errore di inizializzazione del database. Riprova.";
+                // Se Firebase non è pronto, avvisa l'utente
+                messaggioElemento.textContent = "Errore di inizializzazione. Ricarica la pagina.";
                 messaggioElemento.style.color = 'var(--error-color)';
                 messaggioElemento.style.display = 'block';
                 return;
             }
+
+            const voto = parseInt(document.getElementById('votoInput').value);
+            const messaggioElemento = document.getElementById('messaggio');
 
             if (isNaN(voto) || voto < 1 || voto > 10) {
                 alert('Inserisci un voto valido tra 1 e 10.');
@@ -178,7 +168,6 @@
             }
 
             if (!isTestMode && localStorage.getItem(getVotoKey()) === 'true') {
-                // ... (Gestione voto doppio)
                 messaggioElemento.textContent = `Hai già votato ${decodeURIComponent(nomePartecipante)} in questa sessione!`;
                 messaggioElemento.style.color = 'orange';
                 messaggioElemento.style.display = 'block';
@@ -190,11 +179,11 @@
             messaggioElemento.style.display = 'block';
             
             try {
-                // Inserimento del voto usando le funzioni globali di Firestore
-                await firestore_addDoc(firestore_collection(db, VOTI_COLLECTION), {
+                // Usa la sintassi V8/V9 compatibile
+                await window.db.collection(window.VOTI_COLLECTION).add({
                     nome: decodeURIComponent(nomePartecipante),
                     voto: voto.toString(),
-                    timestamp: firestore_serverTimestamp()
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp() // Utile per l'ordinamento
                 });
                 
                 if (!isTestMode) {
