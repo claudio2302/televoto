@@ -5,11 +5,21 @@ const STORAGE_KEY_NOMI = 'televotoNomiOnline';
 const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/modve7uqqwetx'; 
 
 // Variabile booleana per la modalità test (IMPOSTABILE SOLO QUI)
-const IS_TEST_MODE = false; // <-- Imposta su TRUE per voti multipli; FALSE per voto singolo.
+const IS_TEST_MODE = false; 
 
 // Variabile per l'ID di sessione, generata al caricamento della pagina per distinguere i voti
 const SESSION_ID = Date.now(); 
 const STORAGE_KEY_VISITED = 'televotoVisitedQr'; 
+
+// --- FUNZIONI DI UTILITÀ ---
+
+// Funzione per capitalizzare la prima lettera di ogni parola
+function capitalizeWords(str) {
+    if (!str) return str;
+    return str.toLowerCase().split(' ').map(word => {
+        return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+}
 
 // --- FUNZIONI DI GESTIONE ---
 
@@ -31,19 +41,20 @@ function salvaNomi() {
 
 // 3. Aggiunge un nuovo partecipante dalla modale
 function aggiungiPartecipante(nome) {
-    const nomeInput = nome.trim();
+    // Capitalizza automaticamente prima di salvare
+    const nomeCapitalizzato = capitalizeWords(nome.trim());
 
-    if (!nomeInput) {
+    if (!nomeCapitalizzato) {
         alert("Inserisci un nome valido.");
         return false;
     }
     
-    if (nomeInput && !partecipanti[nomeInput]) {
-        partecipanti[nomeInput] = [];
+    if (nomeCapitalizzato && !partecipanti[nomeCapitalizzato]) {
+        partecipanti[nomeCapitalizzato] = [];
         salvaNomi();
         aggiornaInterfaccia();
         return true;
-    } else if (partecipanti[nomeInput]) {
+    } else if (partecipanti[nomeCapitalizzato]) {
         alert('Nome già presente!');
         return false;
     }
@@ -78,7 +89,7 @@ function aggiornaInterfaccia() {
 
 // --- GESTIONE MODALI ---
 
-let enterListener; // Variabile per tracciare il listener di Invio
+let enterListener; 
 
 // Modale Inserimento Nome (AGGIUNTO AUTOFOCUS E GESTIONE TASTO INVIO)
 function apriModaleInserimento() {
@@ -88,14 +99,12 @@ function apriModaleInserimento() {
     inputField.value = '';
     
     modal.style.display = 'flex';
-    inputField.focus(); // Focus immediato
+    inputField.focus(); 
     
-    // Rimuove il listener precedente (se esiste) per evitare duplicati
     if (enterListener) {
         inputField.removeEventListener('keydown', enterListener);
     }
     
-    // Definisce e aggiunge il nuovo listener per il tasto Invio
     enterListener = function handleEnter(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -111,7 +120,6 @@ function salvaNomeDaModale() {
     
     if (aggiungiPartecipante(nome)) {
         document.getElementById('inputModal').style.display = 'none';
-        // Rimuove il listener dopo il salvataggio
         inputField.removeEventListener('keydown', enterListener);
     }
 }
@@ -152,15 +160,16 @@ function chiudiModale(event, id) {
     if (event.target === modal) {
         modal.style.display = 'none';
         
-        // Se si chiude la modale di inserimento, rimuove il listener Invio
         if (id === 'inputModal') {
             const inputField = document.getElementById('modalNomeInput');
-            inputField.removeEventListener('keydown', enterListener);
+            // Si assicura che il listener venga rimosso per evitare effetti collaterali
+            if (enterListener) {
+                 inputField.removeEventListener('keydown', enterListener);
+            }
         }
     }
 }
 
-// Modale Conferma Elimina (semplificata con confirm nativo)
 function apriModaleConfermaElimina(nome) {
     if (confirm(`Sei sicuro di voler rimuovere ${nome}? Questo non cancella i voti passati dal database, ma non li conteggerà.`)) {
         rimuoviPartecipante(nome);
@@ -197,8 +206,7 @@ async function calcolaMediaEVaiAllaClassifica() {
 
         allVoti.forEach(record => {
             const nome = record.nome;
-            // !!! CORREZIONE BUG CRUCIALE !!!
-            // SheetDB ritorna il 'voto' come STRINGA. Dobbiamo convertirla
+            // CORREZIONE: Assicuriamo la conversione a numero intero dal record API
             const voto = parseInt(record.voto); 
             
             if (votiRaw.hasOwnProperty(nome) && !isNaN(voto)) {
@@ -224,7 +232,7 @@ async function calcolaMediaEVaiAllaClassifica() {
     } catch (error) {
         document.body.style.cursor = 'default';
         console.error("Errore nel calcolo o nel recupero dei dati:", error);
-        alert(`ERRORE: Impossibile calcolare la media e la classifica. Controlla la console. Dettaglio: ${error.message}`);
+        alert(`ERRORE: Impossibile calcolare la media e la classifica. Dettaglio: ${error.message}`);
     }
 }
 
