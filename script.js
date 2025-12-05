@@ -5,11 +5,11 @@ const STORAGE_KEY_NOMI = 'televotoNomiOnline';
 const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/modve7uqqwetx'; 
 
 // Variabile booleana per la modalità test (IMPOSTABILE SOLO QUI)
-const IS_TEST_MODE = true; // <-- Imposta su TRUE per voti multipli; FALSE per voto singolo.
+const IS_TEST_MODE = false; // <-- Imposta su TRUE per voti multipli; FALSE per voto singolo.
 
-// Variabile per l'ID di sessione, generata al caricamento della pagina
+// Variabile per l'ID di sessione, generata al caricamento della pagina per distinguere i voti
 const SESSION_ID = Date.now(); 
-const STORAGE_KEY_VISITED = 'televotoVisitedQr'; // Nuova chiave per tracciare i QR aperti
+const STORAGE_KEY_VISITED = 'televotoVisitedQr'; 
 
 // --- FUNZIONI DI GESTIONE ---
 
@@ -37,8 +37,6 @@ function aggiungiPartecipante(nome) {
         alert("Inserisci un nome valido.");
         return false;
     }
-    
-    // Rimosso il limite di 25 partecipanti
     
     if (nomeInput && !partecipanti[nomeInput]) {
         partecipanti[nomeInput] = [];
@@ -80,10 +78,23 @@ function aggiornaInterfaccia() {
 
 // --- GESTIONE MODALI ---
 
-// Modale Inserimento Nome
+// Modale Inserimento Nome (AGGIUNTO AUTOFOCUS E GESTIONE TASTO INVIO)
 function apriModaleInserimento() {
-    document.getElementById('modalNomeInput').value = '';
+    const inputField = document.getElementById('modalNomeInput');
+    inputField.value = '';
+    
     document.getElementById('inputModal').style.display = 'flex';
+    inputField.focus(); // Focus immediato
+    
+    // Aggiunge un listener temporaneo per il tasto Invio
+    inputField.addEventListener('keydown', function handleEnter(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            salvaNomeDaModale();
+            // Rimuove il listener dopo l'uso
+            inputField.removeEventListener('keydown', handleEnter);
+        }
+    });
 }
 
 function salvaNomeDaModale() {
@@ -111,7 +122,6 @@ function apriModaleQr(nome) {
 
     const baseUrl = window.location.href.split('?')[0].split('index.html')[0]; 
     
-    // L'URL include l'ID di sessione e lo stato della modalità test
     const urlVoto = `${baseUrl}voto.html?nome=${encodeURIComponent(nome)}&session=${SESSION_ID}&test=${IS_TEST_MODE}`;
 
     modalNome.textContent = nome;
@@ -127,10 +137,9 @@ function apriModaleQr(nome) {
     modal.style.display = 'flex';
 }
 
-// Chiusura Modali (gestita dal click fuori dalla modale-content)
+// Chiusura Modali: Chiusura solo cliccando sullo sfondo
 function chiudiModale(event, id) {
     const modal = document.getElementById(id);
-    // Chiude solo se il click è sullo sfondo (event.target è l'elemento più esterno)
     if (event.target === modal) {
         modal.style.display = 'none';
     }
@@ -146,13 +155,15 @@ function apriModaleConfermaElimina(nome) {
 function rimuoviPartecipante(nome) {
     delete partecipanti[nome];
     salvaNomi();
+    // Pulisce anche il flag "visitato"
+    let visited = JSON.parse(localStorage.getItem(STORAGE_KEY_VISITED) || '[]');
+    localStorage.setItem(STORAGE_KEY_VISITED, JSON.stringify(visited.filter(n => n !== nome)));
     aggiornaInterfaccia();
 }
 
 
 // --- FUNZIONI DI CALCOLO E CLASSIFICA ---
 
-// Calcola la MEDIA dei voti e mostra la classifica
 async function calcolaMediaEVaiAllaClassifica() {
     document.body.style.cursor = 'wait';
     
@@ -166,12 +177,10 @@ async function calcolaMediaEVaiAllaClassifica() {
         let risultatiMedia = {};
         let votiRaw = {}; 
         
-        // 1. Inizializza i partecipanti noti
         for (const nome of Object.keys(partecipanti)) {
             votiRaw[nome] = [];
         }
 
-        // 2. Raggruppa i voti
         allVoti.forEach(record => {
             const nome = record.nome;
             const voto = parseInt(record.voto); 
@@ -181,7 +190,6 @@ async function calcolaMediaEVaiAllaClassifica() {
             }
         });
         
-        // 3. Calcola la media e formatta
         for (const nome in votiRaw) {
             const voti = votiRaw[nome];
             const totaleVoti = voti.length;
@@ -190,32 +198,31 @@ async function calcolaMediaEVaiAllaClassifica() {
                 const somma = voti.reduce((acc, voto) => acc + voto, 0);
                 risultatiMedia[nome] = parseFloat((somma / totaleVoti).toFixed(2));
             } else {
-                risultatiMedia[nome] = 0; // Media 0 se nessun voto
+                risultatiMedia[nome] = 0;
             }
         }
         
-        // 4. Visualizza la classifica e nasconde l'interfaccia principale
         visualizzaClassifica(risultatiMedia);
         document.body.style.cursor = 'default';
 
     } catch (error) {
         document.body.style.cursor = 'default';
         console.error("Errore nel calcolo o nel recupero dei dati:", error);
-        alert(`ERRORE: Impossibile calcolare la media e la classifica. Controlla la console.`);
+        alert(`ERRORE: Impossibile calcolare la media e la classifica.`);
     }
 }
 
-// Funzione di visualizzazione con i dati della media calcolata
+// Funzione di visualizzazione che nasconde l'interfaccia principale
 function visualizzaClassifica(risultatiMedia) {
     const classificaView = document.getElementById('classifica-view');
-    const mainContainer = document.getElementById('main-container');
+    const mainView = document.getElementById('main-view');
+    const classificaBtn = document.getElementById('classificaBtn');
     const listaClassifica = document.getElementById('listaClassifica');
     
     listaClassifica.innerHTML = '';
     
-    // Ordina in modo DECRESCENTE (media più alta in cima)
     const classificaArray = Object.entries(risultatiMedia)
-        .sort(([, mediaA], [, mediaB]) => mediaB - mediaA);
+        .sort(([, mediaA], [, mediaB]) => mediaB - mediaA); // Ordine decrescente (dal più alto al più basso)
 
     classificaArray.forEach(([nome, media], index) => {
         const li = document.createElement('li');
@@ -227,8 +234,11 @@ function visualizzaClassifica(risultatiMedia) {
         listaClassifica.appendChild(li);
     });
 
-    // Nasconde l'interfaccia principale e mostra la classifica pulita
-    mainContainer.style.display = 'none';
+    // Nasconde l'interfaccia principale e il pulsante Classifica
+    mainView.style.display = 'none';
+    classificaBtn.style.display = 'none';
+    
+    // Mostra la classifica pulita
     classificaView.style.display = 'flex';
 }
 
@@ -256,7 +266,7 @@ async function resetCompleto() {
         localStorage.removeItem(STORAGE_KEY_VISITED);
         
         alert("RESET COMPLETATO! Nuova sessione iniziata.");
-        location.reload(); // Ricarica la pagina per resettare l'ID di sessione
+        location.reload(); 
 
     } catch (error) {
         document.body.style.cursor = 'default';
