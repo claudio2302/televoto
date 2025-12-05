@@ -7,21 +7,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
+        /* === COLORI === */
         :root {
-            /* Colori Gradiente */
             --gradient-start: #00796B; 
             --gradient-mid: #03A9F4;  
             --gradient-end-dark: #004488;  
-            --gradient-end-accent: #9C27B0; /* Viola */
-            /* Colori Interfaccia */
-            --primary-blue: #2196F3; /* Card e Nome Voto */
-            --secondary-button: #00BCD4; /* Turchese/Azzurro Acceso */
+            --gradient-end-accent: #9C27B0; 
+            --primary-blue: #2196F3;
+            --secondary-button: #00BCD4; 
             --danger-color: #EF5350;
-            --rank-color: #9C27B0; /* Viola Classifica */
-            --avg-color-light: #4DD0E1; /* Azzurro Chiaro NUOVO */
+            --rank-color: #f093fb; /* Viola Acceso per Posizione */
+            --avg-color-light: #fffb8f; /* Giallo per Voto */
             --card-bg: var(--primary-blue);
-            --visited-bg: #4FC3F7; 
-            --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.15);
             --text-color-light: white;
             --text-color-dark: #333;
         }
@@ -36,11 +33,9 @@
             justify-content: center;
             align-items: flex-start;
             overflow-x: hidden;
-            /* Per catturare gli eventi mouse/tastiera in classifica */
             cursor: default; 
         }
         
-        /* Nasconde il cursore durante le animazioni (come nel file d'esempio) */
         body.no-cursor,
         body.no-cursor * {
             cursor: none !important;
@@ -58,9 +53,148 @@
             margin-bottom: 30px;
             font-weight: 800;
         }
+        
         /* --- Pulsanti di controllo principali (omessi per brevità) --- */
+        #addBtn { /* Stile ripristinato dal file originale */
+             position: fixed;
+             bottom: 25px;
+             right: 25px;
+             background: linear-gradient(135deg, var(--secondary-button) 0%, #008C9E 100%);
+             color: white;
+             border: none;
+             width: 60px;
+             height: 60px;
+             border-radius: 50%;
+             font-size: 30px;
+             cursor: pointer;
+             transition: all 0.3s ease;
+             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+             z-index: 10001;
+        }
+        #addBtn:hover { transform: scale(1.1); }
+        
+        #classificaBtn { /* Stile ripristinato dal file originale */
+             position: fixed;
+             bottom: 25px;
+             left: 25px;
+             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+             color: white;
+             border: none;
+             padding: 15px 30px;
+             font-size: 1.1em;
+             font-weight: 600;
+             border-radius: 8px;
+             cursor: pointer;
+             transition: all 0.3s ease;
+             box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+             z-index: 10001;
+        }
+        #classificaBtn:hover { transform: scale(1.05); }
 
-        /* --- VISTA CLASSIFICA DINAMICA (Nuovi Stili) --- */
+        /* --- STILI LISTA PARTECIPANTI (ripristinati/adattati) --- */
+        #listaPartecipanti {
+             display: flex;
+             flex-direction: column;
+             gap: 15px;
+             margin-bottom: 80px;
+        }
+        .partecipante-card {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow-light);
+            color: var(--text-color-light);
+            text-align: left;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .partecipante-card.visited {
+            background-color: var(--visited-bg); 
+            color: var(--text-color-dark);
+        }
+        .partecipante-card h3 {
+             margin: 0;
+             font-weight: 800;
+             flex: 1;
+        }
+        .partecipante-info {
+             display: flex;
+             align-items: center;
+             gap: 15px;
+        }
+        .partecipante-card .remove-btn {
+             background: transparent;
+             border: none;
+             color: var(--danger-color); 
+             font-size: 1.2em;
+             cursor: pointer;
+             transition: transform 0.2s, color 0.3s;
+             padding: 0 5px; 
+        }
+        .partecipante-card.visited .remove-btn {
+            color: #C62828; 
+        }
+        .partecipante-card.visited .vote-count {
+            color: var(--text-color-dark) !important;
+        }
+        .partecipante-card .remove-btn:hover {
+             transform: scale(1.1);
+        }
+        /* --- STILI MODALI (ripristinati/adattati) --- */
+        .modal {
+             display: none;
+             position: fixed;
+             top: 0;
+             left: 0;
+             width: 100%;
+             height: 100%;
+             background: rgba(0, 0, 0, 0.7);
+             justify-content: center;
+             align-items: center;
+             z-index: 10000;
+        }
+        .modal-content {
+             background: white;
+             padding: 30px;
+             border-radius: 15px;
+             text-align: center;
+             max-width: 90%;
+             width: 400px;
+             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        .modal-content h2 {
+             margin-top: 0;
+             color: var(--text-color-dark);
+             font-weight: 800;
+        }
+        .modal-content input[type="text"] {
+             width: 100%;
+             padding: 12px;
+             margin-bottom: 20px;
+             border: 2px solid #ccc;
+             border-radius: 8px;
+             font-size: 1em;
+             box-sizing: border-box;
+        }
+        .modal-content button {
+             padding: 12px 30px;
+             background-color: var(--secondary-button);
+             color: white;
+             border: none;
+             border-radius: 8px;
+             cursor: pointer;
+             font-weight: 600;
+             transition: background-color 0.3s;
+        }
+        .modal-content button:hover {
+             background-color: #008C9E;
+        }
+        
+        /* --- VISTA CLASSIFICA DINAMICA (Corretta) --- */
+
         #classifica-view {
             position: fixed;
             top: 0;
@@ -71,7 +205,7 @@
             display: none;
             flex-direction: column;
             align-items: center;
-            padding-top: 30px;
+            padding-top: 0; /* Rimosso, usa min-height per posizionamento */
             z-index: 50;
         }
 
@@ -91,7 +225,7 @@
         }
         
         .ranking-row {
-            background-color: var(--card-bg); 
+            background-color: var(--primary-blue); 
             color: var(--text-color-light); 
             padding: 15px 30px;
             margin-bottom: 12px;
@@ -105,16 +239,16 @@
             width: 550px;
             max-width: 90vw;
             
-            animation: slideInLeft 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+            /* Animazione */
             opacity: 0; 
             transform: translateX(-100vw);
+            transition: none; /* Rimosso transition, solo animazione */
         }
-
+        
         .ranking-row.shown {
-             opacity: 1;
-             transform: translateX(0);
+             animation: slideInLeft 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
         }
-
+        
         @keyframes slideInLeft {
             from {
                 opacity: 0;
@@ -132,8 +266,8 @@
 
         .ranking-pos {
             font-weight: 800;
-            color: var(--rank-color);
-            width: 30px;
+            color: var(--rank-color); /* Viola Acceso */
+            width: 40px;
             margin-right: 25px;
             font-size: 1.5em;
         }
@@ -145,17 +279,18 @@
         }
 
         .ranking-row .score {
-            color: var(--avg-color-light);
+            color: var(--avg-color-light); /* Giallo */
             font-size: 1.6em;
             margin-left: 20px;
             font-weight: 800;
             
-            border: 2px solid white; 
+            border: 2px solid var(--avg-color-light); /* Bordo giallo */
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 5px;
             padding: 5px 10px;
         }
 
-        /* --- STILI PODIO --- */
+        /* --- STILI PODIO (Corretti e Allineati a classifica.html) --- */
 
         #podiumContainer {
             position: fixed;
@@ -170,6 +305,10 @@
             opacity: 0;
             transition: opacity 0.5s ease-in-out;
             z-index: 1000;
+        }
+
+        #podiumContainer.visible {
+            opacity: 1;
         }
 
         #podiumImage {
@@ -199,7 +338,6 @@
             line-height: 1.4;
         }
 
-
         .podium-place.visible {
             opacity: 1;
         }
@@ -222,8 +360,8 @@
         }
 
         .podium-place .score {
-             color: var(--avg-color-light); 
-             border: 2px solid var(--primary-blue); 
+             color: #667eea; /* Blu usato in classifica.html per il voto finale */
+             border: 2px solid #667eea; 
              border-radius: 8px;
              padding: 5px 10px;
              background: rgba(255, 255, 255, 0.1); 
@@ -245,9 +383,32 @@
             width: 100%;
             height: 100%;
             pointer-events: none; 
-            z-index: 10002; /* Deve essere sopra l'overlay */
+            z-index: 10002; 
             overflow: hidden;
             display: none; 
+        }
+
+        .confetti-piece {
+            position: absolute;
+            width: 10px;
+            height: 20px;
+            background: #f093fb; 
+            top: -20px; 
+            opacity: 1;
+            border-radius: 2px;
+            animation: confetti-fall linear forwards;
+        }
+        
+        /* Uso gli stessi keyframes di classifica.html per l'effetto */
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(0) rotateZ(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(110vh) rotateZ(720deg); 
+                opacity: 0;
+            }
         }
         
         #podiumOverlay {
@@ -266,10 +427,10 @@
             display: block;
             opacity: 1;
         }
-
+        
         #resetClassificaBtn {
-            position: absolute;
-            bottom: 85px;
+            position: fixed; /* cambiato da absolute a fixed */
+            bottom: 25px; /* spostato in basso a destra */
             right: 25px;
             background-color: transparent;
             color: var(--danger-color);
@@ -282,6 +443,10 @@
             transition: background-color 0.3s;
             z-index: 10001;
         }
+        #resetClassificaBtn:hover {
+            background-color: rgba(239, 83, 80, 0.1);
+        }
+
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     
@@ -322,7 +487,6 @@
             <canvas id="modalQrCanvas" style="max-width: 100%; height: auto;"></canvas>
         </div>
     </div>
-    
     <div id="classifica-view">
         <div id="podiumOverlay"></div> 
         
@@ -347,7 +511,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             caricaPartecipanti();
             
-            // Attende l'inizializzazione di Firebase
             if (window.db) {
                 caricaConteggiVoti();
             } else {
@@ -355,10 +518,7 @@
             }
         });
 
-        // ====================================================================
         // GESTIONE EVENTI TASTIERA (ATTIVA LA RIVELAZIONE)
-        // ====================================================================
-
         document.addEventListener('keydown', (e) => {
             // Controlla se la classifica è attiva E si preme SPAZIO o INVIO
             if (window.page3Active && (e.key === ' ' || e.key === 'Enter')) { 
@@ -383,8 +543,9 @@
                 
                 return; 
             }
-            // ... (altri controlli tastiera omessi per brevità) ...
         });
+        
+        // La funzione showNextRankingRow è ora globale e definita nello script.js
     </script>
 </body>
 </html>
