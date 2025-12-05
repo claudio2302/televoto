@@ -8,17 +8,17 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
-            /* Nuovi Colori Gradiente */
+            /* Colori Gradiente */
             --gradient-start: #00796B; 
             --gradient-mid: #03A9F4;  
             --gradient-end-dark: #004488;  
             --gradient-end-accent: #9C27B0; /* Viola */
             /* Colori Interfaccia */
-            --primary-blue: #2196F3; /* Card e Nome Voto */
+            --primary-blue: #2196F3; 
             --secondary-button: #00BCD4; /* Turchese/Azzurro Acceso */
             --danger-color: #EF5350;
-            --rank-color: #9C27B0; 
-            --avg-color: #00BCD4; 
+            --rank-color: #9C27B0; /* Viola */
+            --avg-color-light: #4DD0E1; /* Azzurro Chiaro NUOVO */
             --card-bg: var(--primary-blue);
             --visited-bg: #4FC3F7; 
             --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -35,6 +35,7 @@
             display: flex;
             justify-content: center;
             align-items: flex-start;
+            overflow-x: hidden; /* Importante per l'animazione da sinistra */
         }
         .main-view {
             width: 90%;
@@ -202,7 +203,7 @@
             transform: scale(1.05);
         }
         
-        /* --- Vista Classifica (PULITA) --- */
+        /* --- VISTA CLASSIFICA DINAMICA (Nuovi Stili) --- */
         #classifica-view {
             position: fixed;
             top: 0;
@@ -216,44 +217,186 @@
             padding-top: 30px;
             z-index: 50;
         }
-        #classifica-view h1 {
-            color: var(--text-color-light);
-            margin-bottom: 40px;
+
+        .ranking-list-container {
+            /* Contenitore per la lista che appare in Page 3 */
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end; /* Inizia dal basso */
+            align-items: center;
+            min-height: 100vh; 
+            width: 100vw;
+            position: fixed; 
+            top: 0;
+            left: 0;
+            padding-bottom: 25px;
+            overflow-y: hidden; /* Controllato dal JS per lo scroll */
+            transition: opacity 0.5s;
         }
-        #listaClassifica {
-            list-style: none;
-            padding: 0;
-            width: 90%;
-            max-width: 600px;
-        }
-        #listaClassifica li {
+        
+        /* Blocchi di Classifica */
+        .ranking-row {
+            background-color: var(--card-bg); 
+            color: var(--text-color-light); 
+            padding: 15px 30px;
+            margin-bottom: 12px;
+            border-radius: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px;
-            margin-bottom: 12px;
-            border-radius: 8px;
-            background-color: var(--card-bg); 
-            color: var(--text-color-light);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             font-size: 1.2em;
-        }
-        .rank {
-            font-weight: 800;
-            color: var(--rank-color);
-            width: 30px;
-            text-align: left;
-        }
-        .avg {
             font-weight: 600;
-            color: var(--secondary-button);
-            text-align: right;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            width: 550px;
+            max-width: 90vw;
+            
+            /* Animazione */
+            animation: slideInLeft 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+            opacity: 0; 
+            transform: translateX(-100vw);
         }
-        .name {
-            flex-grow: 1;
+
+        .ranking-row.shown {
+             opacity: 1;
+             transform: translateX(0);
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-100vw);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .ranking-row.tied .names-group {
+            line-height: 1.4;
+        }
+
+        .ranking-pos {
+            font-weight: 800;
+            color: var(--rank-color); /* Viola */
+            width: 30px;
+            margin-right: 25px;
+            font-size: 1.5em;
+        }
+
+        .ranking-row .name, .ranking-row .names-group {
+            color: var(--text-color-light);
+            flex: 1;
             text-align: left;
-            margin-left: 15px;
         }
+
+        .ranking-row .score {
+            color: var(--avg-color-light); /* Azzurro Chiaro */
+            font-size: 1.6em;
+            margin-left: 20px;
+            font-weight: 800;
+            
+            /* Bordino Sottile Bianco */
+            border: 2px solid white; 
+            border-radius: 5px;
+            padding: 5px 10px;
+        }
+
+        /* --- STILI PODIO --- */
+
+        #podiumContainer {
+            position: relative;
+            width: 100%;
+            height: 100%; 
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            z-index: 1000;
+        }
+
+        #podiumImage {
+            display: block;
+            width: 95%;
+            max-width: 1400px;
+            height: auto;
+            max-height: 75vh;
+            object-fit: contain;
+            margin: 0 auto;
+        }
+
+        .podium-place {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 25px;
+            min-width: 200px;
+            box-sizing: border-box;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out 0.3s;
+            transform: translateX(-50%);
+            line-height: 1.4;
+        }
+
+
+        .podium-place.visible {
+            opacity: 1;
+        }
+
+        .podium-place .name, .podium-place .names-group {
+             display: block;
+             color: var(--text-color-dark);
+             font-size: 1.1em;
+             margin-bottom: 5px;
+             opacity: 0;
+             transition: opacity 0.5s ease-in-out 0.2s;
+             overflow-wrap: break-word;
+             word-wrap: break-word;
+             text-align: center;
+        }
+
+        .podium-place.show-name .name,
+        .podium-place.show-name .names-group {
+            opacity: 1;
+        }
+
+        .podium-place .score {
+             color: var(--avg-color-light); 
+             border: 2px solid var(--primary-blue); /* Bordo colorato per il podio */
+             border-radius: 8px;
+             padding: 5px 10px;
+             background: rgba(255, 255, 255, 0.1); 
+             display: block;
+             margin-top: 5px;
+             font-size: 1.3em;
+        }
+
+        /* --- POSIZIONAMENTO PODIO (DA REGOLARE SULL'IMMAGINE) --- */
+        /* Questi valori devono essere calibrati sull'immagine podio.png */
+        #podiumPos1 { top: 10%; left: 50%; }
+        #podiumPos2 { top: 30%; left: 75%; }
+        #podiumPos3 { top: 35%; left: 25%; }
+        /* ------------------------------------------- */
+
+        #confettiContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; 
+            z-index: 1001; 
+            overflow: hidden;
+            display: none; 
+        }
+        /* ... (stili coriandoli omessi per brevità) ... */
+
         #resetClassificaBtn {
             position: absolute;
             bottom: 85px;
@@ -267,10 +410,9 @@
             font-size: 1.1em;
             font-weight: 600;
             transition: background-color 0.3s;
+            z-index: 10000;
         }
-        #resetClassificaBtn:hover {
-            background-color: rgba(239, 83, 80, 0.1);
-        }
+
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     
@@ -313,10 +455,20 @@
     </div>
     
     <div id="classifica-view">
-        <h1>CLASSIFICA FINALE</h1>
-        <ul id="listaClassifica"></ul>
+        <div id="ranking-list-container" class="ranking-list-container">
+            </div>
+        <div id="podiumContainer">
+            <img id="podiumImage" src="podio.png" alt="Podio">
+             <div id="podiumPos1" class="podium-place"></div>
+             <div id="podiumPos2" class="podium-place"></div>
+             <div id="podiumPos3" class="podium-place"></div>
+        </div>
         <button id="resetClassificaBtn" onclick="resetCompleto()">RESET</button>
     </div>
+    
+    <audio id="vittoriaAudio" src="vittoria.mp3" preload="auto"></audio>
+    <div id="confettiContainer"></div>
+
 
     <script src="script.js"></script>
     <script>
@@ -329,6 +481,37 @@
                 window.addEventListener('firebaseReady', caricaConteggiVoti);
             }
         });
+
+        // ====================================================================
+        // GESTIONE EVENTI TASTIERA (DALL'ESEMPIO DI CLASSIFICA.HTML)
+        // ====================================================================
+
+        document.addEventListener('keydown', (e) => {
+            // Controlla se la classifica è attiva E si preme SPAZIO o INVIO
+            if (window.page3Active && (e.key === ' ' || e.key === 'Enter')) { 
+                e.preventDefault(); 
+                
+                // podiupState > 4 (Stato finale: mostra podio, nomi, coriandoli)
+                if (window.podiumState > 4) { 
+                    // Fermiamo l'audio e i coriandoli al prossimo click per uscire
+                    if (window.vittoriaAudio && !window.vittoriaAudio.paused) {
+                        window.vittoriaAudio.pause();
+                        window.vittoriaAudio.currentTime = 0; 
+                    }
+                    window.stopConfetti(); 
+                    
+                    // Chiudi la classifica e torna alla pagina principale
+                    window.closeFinalRankingView();
+                    
+                } else { 
+                    window.showNextRankingRow(); // Procede al prossimo blocco/stato
+                }
+                
+                return; 
+            }
+            // ... (altri controlli tastiera omessi per brevità) ...
+        });
+
     </script>
 </body>
 </html>
