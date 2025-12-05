@@ -162,7 +162,6 @@ function chiudiModale(event, id) {
         
         if (id === 'inputModal') {
             const inputField = document.getElementById('modalNomeInput');
-            // Si assicura che il listener venga rimosso per evitare effetti collaterali
             if (enterListener) {
                  inputField.removeEventListener('keydown', enterListener);
             }
@@ -206,7 +205,6 @@ async function calcolaMediaEVaiAllaClassifica() {
 
         allVoti.forEach(record => {
             const nome = record.nome;
-            // CORREZIONE: Assicuriamo la conversione a numero intero dal record API
             const voto = parseInt(record.voto); 
             
             if (votiRaw.hasOwnProperty(nome) && !isNaN(voto)) {
