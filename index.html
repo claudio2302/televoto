@@ -8,26 +8,26 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
-            /* Colori Gradiente */
+            /* Nuovi Colori Gradiente */
             --gradient-start: #00796B; /* Ottanio */
             --gradient-mid: #03A9F4;  /* Blu Cyano */
-            --gradient-end: #004488;  /* Blu Scuro */
+            --gradient-end-dark: #004488;  /* Blu Scuro */
+            --gradient-end-accent: #9C27B0; /* Viola (Nuovo) */
             /* Colori Interfaccia */
             --primary-blue: #2196F3; /* Bel Blu Uniforme per Card */
-            --secondary-button: #00BCD4; /* Turchese/Azzurro (Classifica, Plus, Salva) */
+            --secondary-button: #00BCD4; /* Turchese/Azzurro Acceso (Classifica, Plus, Salva, Voto Media) */
             --danger-color: #EF5350; /* Rosso (Reset) */
+            --rank-color: #9C27B0; /* Viola */
             --card-bg: var(--primary-blue);
             --visited-bg: #4FC3F7; 
             --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.15);
             --text-color-light: white;
             --text-color-dark: #333;
-            /* Nuovi Colori Classifica */
-            --rank-color: #9C27B0; /* Viola */
-            --avg-color: #00BCD4; /* Azzurro */
         }
         body {
             font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 50%, var(--gradient-end) 100%);
+            /* Gradiente con Viola nell'angolo in basso a destra */
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 40%, var(--gradient-end-dark) 80%, var(--gradient-end-accent) 100%);
             color: var(--text-color-dark);
             padding: 0;
             margin: 0;
@@ -56,7 +56,7 @@
             width: 50px;
             height: 50px;
             border-radius: 50%;
-            background-color: var(--secondary-button); /* Azzurro */
+            background-color: var(--secondary-button); /* Azzurro acceso */
             color: white;
             border: none;
             font-size: 1.5em;
@@ -66,10 +66,10 @@
             z-index: 10;
         }
         #addBtn:hover {
-            background-color: #008C9E; 
+            background-color: #008C9E;
             transform: scale(1.05);
         }
-        /* --- Lista Partecipanti (A Colonna) --- */
+        /* --- Lista Partecipanti (Card) --- */
         #listaPartecipanti {
             list-style: none;
             padding: 0;
@@ -80,7 +80,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background-color: var(--card-bg); /* Blu Uniforme */
+            background-color: var(--card-bg); 
             color: var(--text-color-light); 
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -104,7 +104,7 @@
         .remove-btn {
             background: none;
             border: none;
-            color: #BDBDBD; /* Icona Cestino Grigia */
+            color: #BDBDBD;
             cursor: pointer;
             font-size: 1.2em;
             opacity: 0.8;
@@ -157,15 +157,11 @@
             border-radius: 8px;
             cursor: pointer;
         }
-
-        /* Modale QR Code - CENTRATURA PERFETTA */
+        /* Modale QR Code - Centratura */
         #qrModal .modal-content {
             display: flex;
             flex-direction: column;
             align-items: center;
-        }
-        #modalQrCanvas {
-            margin: 0 auto;
         }
 
         /* --- Pulsante Classifica --- */
@@ -180,7 +176,6 @@
             cursor: pointer;
             font-size: 1.1em;
             font-weight: 600;
-            /* Rimosso il bordo */
             border: none; 
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
             transition: background-color 0.3s, transform 0.2s;
@@ -198,7 +193,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 50%, var(--gradient-end) 100%);
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 40%, var(--gradient-end-dark) 80%, var(--gradient-end-accent) 100%);
             display: none;
             flex-direction: column;
             align-items: center;
@@ -235,7 +230,7 @@
         }
         .avg {
             font-weight: 600;
-            color: var(--avg-color); /* Azzurro */
+            color: var(--secondary-button); /* Azzurro acceso (Migliore leggibilità) */
             text-align: right;
         }
         .name {
@@ -243,15 +238,14 @@
             text-align: left;
             margin-left: 15px;
         }
-        /* --- Pulsante RESET (Trasparente, Bordo Rosso, Più in alto) --- */
         #resetClassificaBtn {
             position: absolute;
-            bottom: 85px; /* Spostato più in alto */
+            bottom: 85px;
             right: 25px;
             background-color: transparent;
             color: var(--danger-color);
             padding: 15px 30px;
-            border: 2px solid var(--danger-color); /* Bordo Rosso */
+            border: 2px solid var(--danger-color);
             border-radius: 8px;
             cursor: pointer;
             font-size: 1.1em;
@@ -259,7 +253,7 @@
             transition: background-color 0.3s;
         }
         #resetClassificaBtn:hover {
-            background-color: rgba(239, 83, 80, 0.1); /* Leggera tinta rossa al passaggio */
+            background-color: rgba(239, 83, 80, 0.1);
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
