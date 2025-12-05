@@ -9,15 +9,16 @@
     <style>
         :root {
             /* Nuovi Colori Gradiente */
-            --gradient-start: #00796B; /* Ottanio */
-            --gradient-mid: #03A9F4;  /* Blu Cyano */
-            --gradient-end-dark: #004488;  /* Blu Scuro */
-            --gradient-end-accent: #9C27B0; /* Viola (Nuovo) */
+            --gradient-start: #00796B; 
+            --gradient-mid: #03A9F4;  
+            --gradient-end-dark: #004488;  
+            --gradient-end-accent: #9C27B0; /* Viola */
             /* Colori Interfaccia */
-            --primary-blue: #2196F3; /* Bel Blu Uniforme per Card */
-            --secondary-button: #00BCD4; /* Turchese/Azzurro Acceso (Classifica, Plus, Salva, Voto Media) */
-            --danger-color: #EF5350; /* Rosso (Reset) */
-            --rank-color: #9C27B0; /* Viola */
+            --primary-blue: #2196F3; /* Card e Nome Voto */
+            --secondary-button: #00BCD4; /* Turchese/Azzurro Acceso */
+            --danger-color: #EF5350;
+            --rank-color: #9C27B0; 
+            --avg-color: #00BCD4; 
             --card-bg: var(--primary-blue);
             --visited-bg: #4FC3F7; 
             --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -26,8 +27,8 @@
         }
         body {
             font-family: 'Poppins', sans-serif;
-            /* Gradiente con Viola nell'angolo in basso a destra */
-            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 40%, var(--gradient-end-dark) 80%, var(--gradient-end-accent) 100%);
+            /* Porzione di Viola Aumentata (dal 70% in poi) */
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 40%, var(--gradient-end-dark) 70%, var(--gradient-end-accent) 100%);
             color: var(--text-color-dark);
             padding: 0;
             margin: 0;
@@ -96,6 +97,16 @@
         .partecipante-card.visited {
             background-color: var(--visited-bg);
         }
+        .partecipante-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .vote-count {
+            font-size: 0.8em;
+            opacity: 0.8;
+            padding-right: 15px;
+        }
         .partecipante-card h3 {
             margin: 0;
             font-size: 1.2em;
@@ -150,7 +161,7 @@
             border-radius: 8px;
         }
         #inputModal button {
-            background-color: var(--secondary-button); /* Azzurro */
+            background-color: var(--secondary-button); 
             color: white;
             padding: 10px 20px;
             border: none;
@@ -162,6 +173,11 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            /* Aggiungi padding o margin per mantenere il QR Code centrato verticalmente */
+            padding-bottom: 40px; 
+        }
+        #modalQrCanvas {
+            margin: 0 auto; /* Centra orizzontalmente il canvas */
         }
 
         /* --- Pulsante Classifica --- */
@@ -193,7 +209,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 40%, var(--gradient-end-dark) 80%, var(--gradient-end-accent) 100%);
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 40%, var(--gradient-end-dark) 70%, var(--gradient-end-accent) 100%);
             display: none;
             flex-direction: column;
             align-items: center;
@@ -224,13 +240,13 @@
         }
         .rank {
             font-weight: 800;
-            color: var(--rank-color); /* Viola */
+            color: var(--rank-color);
             width: 30px;
             text-align: left;
         }
         .avg {
             font-weight: 600;
-            color: var(--secondary-button); /* Azzurro acceso (Migliore leggibilità) */
+            color: var(--secondary-button);
             text-align: right;
         }
         .name {
@@ -300,6 +316,8 @@
     <script src="script.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', caricaPartecipanti);
+        // Al caricamento, carica anche il conteggio dei voti aggiornato.
+        caricaConteggiVoti();
     </script>
 </body>
 </html>
