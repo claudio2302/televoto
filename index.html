@@ -7,19 +7,19 @@
         body { font-family: Arial, sans-serif; padding: 20px; }
         .partecipante { border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 5px; }
         .qr-container { margin-top: 10px; border: 1px dashed #007bff; padding: 10px; display: inline-block; }
+        #resetButton { background-color: #dc3545; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; margin-left: 20px; }
+        #resetButton:hover { background-color: #c82333; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 </head>
 <body>
 
     <h1>Gestione Partecipanti</h1>
-    
-    <div style="background-color:#fff3cd; padding:10px; border-radius:5px; margin-bottom: 20px;">
-        ⚠️ **ATTENZIONE:** Incolla il tuo URL API SheetDB nel file `script.js` prima di caricare!
-    </div>
 
     <input type="text" id="nomeInput" placeholder="Inserisci nome partecipante">
     <button onclick="aggiungiPartecipante()">Aggiungi</button>
+    
+    <button id="resetButton" onclick="resetCompleto()">RESET COMPLETO (Inizia Nuova Sessione)</button>
 
     <hr>
 
@@ -38,51 +38,6 @@
 
     <script src="script.js"></script>
     <script>
-        // Inizializza la lista dei partecipanti all'avvio
-        document.addEventListener('DOMContentLoaded', caricaPartecipanti);
-    </script>
-</body>
-</html><!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <title>Gestione Televoto Online</title>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        .partecipante { border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 5px; }
-        .qr-container { margin-top: 10px; border: 1px dashed #007bff; padding: 10px; display: inline-block; }
-    </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-</head>
-<body>
-
-    <h1>Gestione Partecipanti</h1>
-    
-    <div style="background-color:#fff3cd; padding:10px; border-radius:5px; margin-bottom: 20px;">
-        ⚠️ **ATTENZIONE:** Incolla il tuo URL API SheetDB nel file `script.js` prima di caricare!
-    </div>
-
-    <input type="text" id="nomeInput" placeholder="Inserisci nome partecipante">
-    <button onclick="aggiungiPartecipante()">Aggiungi</button>
-
-    <hr>
-
-    <div id="listaPartecipanti">
-        </div>
-
-    <hr>
-
-    <button onclick="calcolaSommaETutto()">Calcola Somma Voti per Tutti</button>
-    <button onclick="visualizzaClassifica()">Vai alla Classifica</button>
-
-    <div id="classifica" style="display:none; margin-top: 20px;">
-        <h2>Classifica Finale</h2>
-        <ul id="listaClassifica"></ul>
-    </div>
-
-    <script src="script.js"></script>
-    <script>
-        // Inizializza la lista dei partecipanti all'avvio
         document.addEventListener('DOMContentLoaded', caricaPartecipanti);
     </script>
 </body>
