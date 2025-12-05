@@ -8,24 +8,25 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
-            /* Nuovi Colori Gradiente */
-            --gradient-start: #00796B; /* Ottanio (Predominante) */
+            /* Colori Gradiente */
+            --gradient-start: #00796B; /* Ottanio */
             --gradient-mid: #03A9F4;  /* Blu Cyano */
             --gradient-end: #004488;  /* Blu Scuro */
             /* Colori Interfaccia */
-            --primary-blue: #2196F3; /* Bel Blu Uniforme per Card e Plus */
-            --primary-button: #FF5722; /* Arancione Acceso (Reset) */
-            --secondary-button: #00BCD4; /* Turchese (Classifica) */
-            --danger-color: #EF5350; /* Rosso */
+            --primary-blue: #2196F3; /* Bel Blu Uniforme per Card */
+            --secondary-button: #00BCD4; /* Turchese/Azzurro (Classifica, Plus, Salva) */
+            --danger-color: #EF5350; /* Rosso (Reset) */
             --card-bg: var(--primary-blue);
             --visited-bg: #4FC3F7; 
             --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.15);
             --text-color-light: white;
             --text-color-dark: #333;
+            /* Nuovi Colori Classifica */
+            --rank-color: #9C27B0; /* Viola */
+            --avg-color: #00BCD4; /* Azzurro */
         }
         body {
             font-family: 'Poppins', sans-serif;
-            /* Ordine modificato: Ottanio -> Blu Cyano -> Blu Scuro */
             background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 50%, var(--gradient-end) 100%);
             color: var(--text-color-dark);
             padding: 0;
@@ -49,23 +50,23 @@
         }
         /* --- Pulsante Aggiungi (Cerchio +) --- */
         #addBtn {
-            position: fixed; /* Fisso sullo schermo */
+            position: fixed;
             top: 25px;
             right: 25px;
             width: 50px;
             height: 50px;
             border-radius: 50%;
-            background-color: var(--primary-blue);
+            background-color: var(--secondary-button); /* Azzurro */
             color: white;
             border: none;
             font-size: 1.5em;
             cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
             transition: background-color 0.3s, transform 0.2s;
             z-index: 10;
         }
         #addBtn:hover {
-            background-color: #1565C0; 
+            background-color: #008C9E; 
             transform: scale(1.05);
         }
         /* --- Lista Partecipanti (A Colonna) --- */
@@ -93,7 +94,7 @@
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
         }
         .partecipante-card.visited {
-            background-color: var(--visited-bg); /* Tonalità più chiara di blu per visitato */
+            background-color: var(--visited-bg);
         }
         .partecipante-card h3 {
             margin: 0;
@@ -149,7 +150,7 @@
             border-radius: 8px;
         }
         #inputModal button {
-            background-color: var(--primary-button);
+            background-color: var(--secondary-button); /* Azzurro */
             color: white;
             padding: 10px 20px;
             border: none;
@@ -157,18 +158,30 @@
             cursor: pointer;
         }
 
+        /* Modale QR Code - CENTRATURA PERFETTA */
+        #qrModal .modal-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #modalQrCanvas {
+            margin: 0 auto;
+        }
+
         /* --- Pulsante Classifica --- */
         #classificaBtn {
             position: fixed;
             bottom: 25px;
             right: 25px;
-            background-color: var(--secondary-button); /* Turchese */
+            background-color: var(--secondary-button);
             color: white;
             padding: 15px 30px;
             border-radius: 8px;
             cursor: pointer;
             font-size: 1.1em;
             font-weight: 600;
+            /* Rimosso il bordo */
+            border: none; 
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
             transition: background-color 0.3s, transform 0.2s;
             z-index: 5;
@@ -209,7 +222,6 @@
             padding: 15px;
             margin-bottom: 12px;
             border-radius: 8px;
-            /* Stile della card come la lista iniziale */
             background-color: var(--card-bg); 
             color: var(--text-color-light);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -217,13 +229,13 @@
         }
         .rank {
             font-weight: 800;
-            color: var(--primary-button); 
+            color: var(--rank-color); /* Viola */
             width: 30px;
             text-align: left;
         }
         .avg {
             font-weight: 600;
-            color: white; 
+            color: var(--avg-color); /* Azzurro */
             text-align: right;
         }
         .name {
@@ -231,23 +243,23 @@
             text-align: left;
             margin-left: 15px;
         }
+        /* --- Pulsante RESET (Trasparente, Bordo Rosso, Più in alto) --- */
         #resetClassificaBtn {
             position: absolute;
-            bottom: 25px; /* Spostato più in alto rispetto al fondo */
+            bottom: 85px; /* Spostato più in alto */
             right: 25px;
-            background-color: var(--danger-color);
-            color: white;
+            background-color: transparent;
+            color: var(--danger-color);
             padding: 15px 30px;
-            border: none;
+            border: 2px solid var(--danger-color); /* Bordo Rosso */
             border-radius: 8px;
             cursor: pointer;
             font-size: 1.1em;
             font-weight: 600;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
             transition: background-color 0.3s;
         }
         #resetClassificaBtn:hover {
-            background-color: #C62828;
+            background-color: rgba(239, 83, 80, 0.1); /* Leggera tinta rossa al passaggio */
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
