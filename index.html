@@ -213,8 +213,8 @@
             display: none;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-end;
-            padding-bottom: 50px;
+            justify-content: flex-start;
+            padding-top: 50px;
             z-index: 50;
         }
         
@@ -232,13 +232,13 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 25px 40px;
-            margin-bottom: 15px;
-            border-radius: 15px;
-            background-color: rgba(255, 255, 255, 0.95);
-            color: var(--text-color-dark);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            font-size: 32px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            background-color: var(--card-bg);
+            color: var(--text-color-light);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            font-size: 1.2em;
             font-weight: bold;
             animation: slideIn 0.5s ease-out;
             width: 600px;
@@ -247,7 +247,7 @@
         
         #listaClassifica li.tied {
             align-items: center;
-            padding: 30px 40px;
+            padding: 15px;
         }
 
         @keyframes slideIn {
@@ -262,28 +262,28 @@
         }
 
         .rank {
-            font-size: 34px;
+            font-size: 1.2em;
             font-weight: 800;
             color: var(--rank-color);
-            margin-right: 30px;
+            width: 30px;
+            text-align: left;
         }
         .avg {
             font-weight: 600;
             color: var(--secondary-button);
-            font-size: 38px;
-            margin-left: 40px;
+            text-align: right;
         }
         .name {
-            flex: 1;
+            flex-grow: 1;
             text-align: left;
-            color: var(--text-color-dark);
+            margin-left: 15px;
         }
         
         .names-group {
-            flex: 1;
+            flex-grow: 1;
             line-height: 1.5;
             text-align: left;
-            color: var(--text-color-dark);
+            margin-left: 15px;
         }
         
         /* --- Podio --- */
