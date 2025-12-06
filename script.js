@@ -10,10 +10,16 @@ const SESSION_ID = Date.now();
 const STORAGE_KEY_VISITED = 'televotoVisitedQr'; 
 let votiCorrenti = {}; 
 
-// NUOVE VARIABILI PER LA GESTIONE DELL'ANIMAZIONE
-let classificaFinale = []; // Contiene i gruppi di partecipanti ordinati
-let indiceClassificaCorrente = 0;
-let keyListener; // Variabile per tenere traccia del listener 'Enter'
+// Variabili per la classifica animata
+let finalRankingIndex = 0;
+let sortedFinalRanking = [];
+let podiumState = 0;
+let page3Active = false;
+let cursorHideTimer = null;
+let confettiTimer = null;
+
+const vittoriaAudio = document.getElementById('vittoriaAudio');
+const confettiContainer = document.getElementById('confettiContainer');
 
 // NOTE: db e VOTI_COLLECTION sono resi globali in firebase_init.js
 
@@ -127,7 +133,7 @@ function aggiornaInterfaccia() {
 
 // --- GESTIONE MODALI ---
 
-let enterListenerModal; 
+let enterListener; 
 
 function apriModaleInserimento() {
     const inputField = document.getElementById('modalNomeInput');
@@ -138,17 +144,17 @@ function apriModaleInserimento() {
     modal.style.display = 'flex';
     inputField.focus(); 
     
-    if (enterListenerModal) {
-        inputField.removeEventListener('keydown', enterListenerModal);
+    if (enterListener) {
+        inputField.removeEventListener('keydown', enterListener);
     }
     
-    enterListenerModal = function handleEnter(e) {
+    enterListener = function handleEnter(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             salvaNomeDaModale();
         }
     };
-    inputField.addEventListener('keydown', enterListenerModal);
+    inputField.addEventListener('keydown', enterListener);
 }
 
 function salvaNomeDaModale() {
@@ -157,7 +163,7 @@ function salvaNomeDaModale() {
     
     if (aggiungiPartecipante(nome)) {
         document.getElementById('inputModal').style.display = 'none';
-        inputField.removeEventListener('keydown', enterListenerModal);
+        inputField.removeEventListener('keydown', enterListener);
     }
 }
 
@@ -197,15 +203,15 @@ function chiudiModale(event, id) {
         
         if (id === 'inputModal') {
             const inputField = document.getElementById('modalNomeInput');
-            if (enterListenerModal) {
-                 inputField.removeEventListener('keydown', enterListenerModal);
+            if (enterListener) {
+                 inputField.removeEventListener('keydown', enterListener);
             }
         }
     }
 }
 
 function apriModaleConfermaElimina(nome) {
-    if (confirm(`Sei sicuro di voler rimuovere ${nome}? Questo non cancella i voti passati dal database, ma non li conteggerà.`)) {
+    if (confirm(`Sei sicuro di voler rimuovere ${nome}? Questo non cancella i voti passati dal database, ma non li conteggià.`)) {
         rimuoviPartecipante(nome);
     }
 }
@@ -222,6 +228,7 @@ function rimuoviPartecipante(nome) {
 // --- FUNZIONI DI CALCOLO E CLASSIFICA (UTILIZZA FIREBASE) ---
 
 async function calcolaMediaEVaiAllaClassifica() {
+    // Controllo robusto che il DB sia pronto
     if (!window.db) {
         alert("Il database non è stato ancora inizializzato. Attendi un istante e riprova. Se l'errore persiste, ricarica la pagina.");
         return;
@@ -233,6 +240,7 @@ async function calcolaMediaEVaiAllaClassifica() {
         const colRef = window.db.collection(window.VOTI_COLLECTION);
         const snapshot = await colRef.get();
         
+        let risultatiMedia = {};
         let votiRaw = {}; 
         
         for (const nome of Object.keys(partecipanti)) {
@@ -248,9 +256,7 @@ async function calcolaMediaEVaiAllaClassifica() {
                 votiRaw[nome].push(voto);
             }
         });
-
-        // 1. Calcola la media per ogni partecipante
-        let risultatiMedia = {};
+        
         for (const nome in votiRaw) {
             const voti = votiRaw[nome];
             const totaleVoti = voti.length;
@@ -263,46 +269,7 @@ async function calcolaMediaEVaiAllaClassifica() {
             }
         }
         
-        // 2. Raggruppa i partecipanti per media (parimerito)
-        const gruppiPerMedia = {};
-        for (const nome in risultatiMedia) {
-            const media = risultatiMedia[nome];
-            if (!gruppiPerMedia[media]) {
-                gruppiPerMedia[media] = [];
-            }
-            gruppiPerMedia[media].push(nome);
-        }
-
-        // 3. Ordina le medie e crea la classifica finale (dalla media più alta a quella più bassa)
-        const medieOrdinate = Object.keys(gruppiPerMedia)
-            .map(media => parseFloat(media))
-            .sort((a, b) => b - a);
-
-        let rankCounter = 1;
-        classificaFinale = [];
-        
-        medieOrdinate.forEach(media => {
-            const nomi = gruppiPerMedia[media].sort(); // Ordina i nomi per coerenza
-            
-            // Logica di Dense Ranking: il rankCounter avanza solo una volta per gruppo
-            classificaFinale.push({
-                rank: rankCounter,
-                media: media.toFixed(2),
-                nomi: nomi
-            });
-            
-            // Il rankCounter avanza di 1 per il prossimo gruppo, 
-            // indipendentemente dal numero di persone in parimerito.
-            rankCounter++;
-        });
-
-        // La classifica deve essere rivelata dall'ultimo al primo, quindi invertiamo l'array dei gruppi
-        classificaFinale.reverse(); 
-
-        // Resetta l'indice per l'animazione
-        indiceClassificaCorrente = 0; 
-
-        visualizzaClassificaAnimata();
+        visualizzaClassifica(risultatiMedia);
         document.body.style.cursor = 'default';
 
     } catch (error) {
@@ -312,79 +279,337 @@ async function calcolaMediaEVaiAllaClassifica() {
     }
 }
 
-function visualizzaClassificaAnimata() {
+function visualizzaClassifica(risultatiMedia) {
     const classificaView = document.getElementById('classifica-view');
     const mainView = document.getElementById('main-view');
     const classificaBtn = document.getElementById('classificaBtn');
+    const addBtn = document.getElementById('addBtn');
     
-    // 1. Nasconde la lista e i pulsanti (tranne il RESET)
+    // Nascondi elementi principali
     mainView.style.display = 'none';
     classificaBtn.style.display = 'none';
+    addBtn.style.display = 'none';
+    
+    // Prepara la classifica
+    const classificaArray = Object.entries(risultatiMedia)
+        .filter(([nome, media]) => media > 0)
+        .sort(([, mediaA], [, mediaB]) => mediaB - mediaA);
+    
+    // Raggruppa per punteggio
+    sortedFinalRanking = [];
+    let currentGroup = [];
+    let currentScore = -Infinity;
+    let currentRank = 0;
+    
+    classificaArray.forEach(([nome, media]) => {
+        if (media !== currentScore) {
+            if (currentGroup.length > 0) {
+                sortedFinalRanking.push({
+                    nomi: currentGroup.map(item => item.nome),
+                    totale: currentScore,
+                    posizione: currentRank
+                });
+            }
+            currentRank++;
+            currentGroup = [{ nome, media }];
+            currentScore = media;
+        } else {
+            currentGroup.push({ nome, media });
+        }
+    });
+    
+    if (currentGroup.length > 0) {
+        sortedFinalRanking.push({
+            nomi: currentGroup.map(item => item.nome),
+            totale: currentScore,
+            posizione: currentRank
+        });
+    }
+    
+    // Inverti per mostrare dal basso
+    sortedFinalRanking.reverse();
+    
+    // Reset stato
+    finalRankingIndex = 0;
+    podiumState = 0;
+    page3Active = true;
+    
+    // Reset UI
+    document.getElementById('podiumOverlay').classList.remove('active');
+    document.getElementById('listaClassifica').innerHTML = '';
+    document.getElementById('podiumContainer').style.display = 'none';
+    document.getElementById('podiumContainer').classList.remove('visible');
+    document.getElementById('resetClassificaBtn').style.display = 'none';
+    
+    // Reset podio
+    ['podiumPos1', 'podiumPos2', 'podiumPos3'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.innerHTML = '';
+            el.classList.remove('visible', 'show-name');
+            el.style.width = '';
+        }
+    });
+    
+    // Calcola larghezza massima per podio
+    const pIds = ['podiumPos1', 'podiumPos2', 'podiumPos3'];
+    let maxW = 0;
+    const tCont = document.createElement('div');
+    Object.assign(tCont.style, {
+        position: 'absolute',
+        visibility: 'hidden',
+        height: 'auto',
+        width: 'auto',
+        whiteSpace: 'nowrap'
+    });
+    document.body.appendChild(tCont);
+    
+    pIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            const pos = parseInt(id.replace('podiumPos', ''));
+            const grp = sortedFinalRanking.slice().reverse().find(g => g.posizione === pos);
+            if (grp) {
+                let tHTML = (grp.nomi.length > 1) 
+                    ? `<div class="names-group">${grp.nomi.join('<br>')}</div>`
+                    : `<span class="name">${grp.nomi[0] || '&nbsp;'}</span>`;
+                tHTML += `<span class="score">${grp.totale ?? '?'}</span>`;
+                const tEl = document.createElement('div');
+                tEl.className = 'podium-place';
+                Object.assign(tEl.style, {
+                    position: 'absolute',
+                    visibility: 'hidden',
+                    width: 'max-content'
+                });
+                tEl.innerHTML = tHTML;
+                tCont.appendChild(tEl);
+                maxW = Math.max(maxW, tEl.offsetWidth);
+                tCont.removeChild(tEl);
+            }
+        }
+    });
+    document.body.removeChild(tCont);
+    
+    const fW = Math.max(maxW + 30, 200);
+    pIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.width = `${fW}px`;
+    });
+    
+    // Mostra vista classifica
     classificaView.style.display = 'flex';
     
-    // 2. Aggiunge il listener per il tasto Invio (solo se non è già attivo)
-    if (!keyListener) {
-        keyListener = function handleKeydown(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault(); // Previene il comportamento predefinito
-                mostraProssimoElemento();
+    // Nascondi cursore
+    hideCursor();
+}
+
+function showNextRankingRow() {
+    if (!page3Active) return;
+    
+    const rList = document.getElementById('listaClassifica');
+    const pCont = document.getElementById('podiumContainer');
+    const pOver = document.getElementById('podiumOverlay');
+    const resetBtn = document.getElementById('resetClassificaBtn');
+    
+    if (podiumState === 0) {
+        const thresh = 3;
+        
+        // Se abbiamo finito o siamo arrivati ai primi 3
+        if (finalRankingIndex >= sortedFinalRanking.length || 
+            (sortedFinalRanking[finalRankingIndex]?.posizione <= thresh)) {
+            if (sortedFinalRanking.length > 0) {
+                // Passa al podio
+                pCont.style.display = 'flex';
+                void pCont.offsetWidth;
+                pCont.classList.add('visible');
+                pOver.classList.add('active');
+                podiumState = 1;
+            } else {
+                page3Active = false;
             }
-        };
-        document.addEventListener('keydown', keyListener);
+            return;
+        }
+        
+        // Aggiungi riga
+        const grp = sortedFinalRanking[finalRankingIndex];
+        const row = document.createElement('li');
+        
+        const pos = grp.posizione + '°';
+        
+        if (grp.nomi.length > 1) {
+            row.classList.add('tied');
+            row.innerHTML = `
+                <span class="rank">${pos}</span>
+                <div class="names-group">${grp.nomi.join('<br>')}</div>
+                <span class="avg">${grp.totale}</span>
+            `;
+        } else {
+            row.innerHTML = `
+                <span class="rank">${pos}</span>
+                <span class="name">${grp.nomi[0]}</span>
+                <span class="avg">${grp.totale}</span>
+            `;
+        }
+        
+        rList.insertBefore(row, rList.firstChild);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        finalRankingIndex++;
+        
+    } else {
+        // Animazione podio
+        podiumState++;
+        
+        const g1 = sortedFinalRanking.find(g => g.posizione === 1);
+        const g2 = sortedFinalRanking.find(g => g.posizione === 2);
+        const g3 = sortedFinalRanking.find(g => g.posizione === 3);
+        
+        switch (podiumState) {
+            case 2: // Mostra 3°
+                if (g3) populatePodiumElement('podiumPos3', g3);
+                break;
+            case 3: // Mostra 1° e 2° senza nomi
+                if (g2) populatePodiumElement('podiumPos2', g2, false, true);
+                if (g1) populatePodiumElement('podiumPos1', g1, false, true);
+                break;
+            case 4: // Mostra nomi 1° e 2°, attiva audio e coriandoli
+                if (g2) populatePodiumElement('podiumPos2', g2);
+                if (g1) populatePodiumElement('podiumPos1', g1);
+                
+                setTimeout(() => {
+                    if (vittoriaAudio) {
+                        vittoriaAudio.currentTime = 0;
+                        vittoriaAudio.play().catch(e => console.error("Errore play vittoria:", e));
+                    }
+                    startConfetti();
+                    resetBtn.style.display = 'block';
+                }, 500);
+                break;
+        }
+    }
+}
+
+function populatePodiumElement(id, grp, showN = true, showS = true) {
+    const el = document.getElementById(id);
+    if (!el || !grp) return;
+    
+    el.classList.remove('show-name');
+    let vis = el.classList.contains('visible');
+    
+    if (!vis || !showN) el.innerHTML = '';
+    
+    let nHTML = (grp.nomi.length > 1)
+        ? `<div class="names-group">${grp.nomi.join('<br>')}</div>`
+        : `<span class="name">${grp.nomi[0] || '&nbsp;'}</span>`;
+    let sHTML = showS 
+        ? `<span class="score">${grp.totale ?? '?'}</span>`
+        : `<span class="score">&nbsp;</span>`;
+    
+    if (!vis || !showN) {
+        el.innerHTML = nHTML + sHTML;
+    } else {
+        const nEl = el.querySelector('.name, .names-group');
+        if (nEl) nEl.outerHTML = nHTML;
+        else el.insertAdjacentHTML('afterbegin', nHTML);
     }
     
-    // Mostra il primo elemento subito (l'ultimo in classifica)
-    if (indiceClassificaCorrente === 0) {
-        mostraProssimoElemento();
+    void el.offsetWidth;
+    
+    if (!vis) el.classList.add('visible');
+    if (showN) setTimeout(() => el.classList.add('show-name'), 100);
+}
+
+// --- GESTIONE CURSORE ---
+function hideCursor() {
+    document.body.classList.add('no-cursor');
+}
+
+function resetCursorTimer() {
+    document.body.classList.remove('no-cursor');
+    if (cursorHideTimer) clearTimeout(cursorHideTimer);
+    if (page3Active) {
+        cursorHideTimer = setTimeout(hideCursor, 1500);
     }
 }
 
-function mostraProssimoElemento() {
-    const listaClassifica = document.getElementById('listaClassifica');
-    const classificaView = document.getElementById('classifica-view');
+// --- GESTIONE CORIANDOLI ---
+function startConfetti() {
+    if (!confettiContainer) return;
+    stopConfetti();
+    confettiContainer.style.display = 'block';
 
-    if (indiceClassificaCorrente < classificaFinale.length) {
-        const item = classificaFinale[indiceClassificaCorrente];
-        
-        // Costruzione del container
-        const li = document.createElement('li');
-        li.className = 'classifica-item';
-        
-        // Costruisce la lista di nomi per il parimerito
-        const nomiHTML = item.nomi.map(nome => `<p>${nome}</p>`).join('');
-        
-        li.innerHTML = `
-            <span class="rank">${item.rank}.</span>
-            <div class="name-list">${nomiHTML}</div>
-            <span class="avg">${item.media}</span>
-        `;
-        
-        // Aggiunge il container in cima (grazie a flex-direction: column-reverse su #listaClassifica)
-        // Questo fa sì che il nuovo elemento sia posizionato sopra il precedente (stacking bottom-up)
-        listaClassifica.prepend(li); 
-        
-        // Attiva l'animazione di scorrimento dopo un piccolo ritardo per permettere al DOM di renderizzare
+    const colors = ['#f093fb', '#f5576c', '#667eea', '#764ba2', '#fffb8f', '#ffffff'];
+
+    const createPiece = () => {
+        if (!page3Active || !vittoriaAudio || vittoriaAudio.paused) {
+            stopConfetti();
+            return;
+        }
+
+        const piece = document.createElement('div');
+        piece.classList.add('confetti-piece');
+        piece.style.left = `${Math.random() * 100}vw`;
+        piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        const duration = Math.random() * 3 + 4;
+        piece.style.animationDuration = `${duration}s`;
+        const size = Math.random() * 8 + 6;
+        piece.style.width = `${size}px`;
+        piece.style.height = `${size * 1.5}px`;
+        piece.style.transform = `rotateZ(${Math.random() * 360}deg)`;
+
+        confettiContainer.appendChild(piece);
+
         setTimeout(() => {
-            li.classList.add('slide-in');
-            
-            // LOGICA DI SCORRIMENTO MODIFICATA:
-            // Forziamo lo scroll in fondo al contenitore (scrollHeight), in modo che il nuovo elemento
-            // (che appare in basso grazie al CSS column-reverse) sia sempre visibile.
-            classificaView.scrollTop = classificaView.scrollHeight; 
-            
-        }, 50); 
-        
-        indiceClassificaCorrente++;
-        
-    } else if (indiceClassificaCorrente === classificaFinale.length) {
-        // Classifica completa
-        alert('Classifica completata! Premi RESET per ricominciare.');
-        // Rimuovi il listener una volta finita la classifica
-        document.removeEventListener('keydown', keyListener);
-        keyListener = null;
+            piece.remove();
+        }, duration * 1000 + 500);
+    };
+
+    confettiTimer = setInterval(createPiece, 50);
+}
+
+function stopConfetti() {
+    if (confettiTimer) {
+        clearInterval(confettiTimer);
+        confettiTimer = null;
+    }
+    if (confettiContainer) {
+        setTimeout(() => {
+            if (confettiContainer && !confettiTimer) {
+                confettiContainer.innerHTML = '';
+                confettiContainer.style.display = 'none';
+            }
+        }, 7000);
     }
 }
 
+// --- GESTIONE EVENTI ---
+document.addEventListener('mousemove', resetCursorTimer);
+
+document.addEventListener('keydown', (e) => {
+    if (page3Active && (e.key === ' ' || e.key === 'Enter')) {
+        e.preventDefault();
+        
+        if (podiumState > 4) {
+            // Stop audio e coriandoli
+            if (vittoriaAudio && !vittoriaAudio.paused) {
+                vittoriaAudio.pause();
+                vittoriaAudio.currentTime = 0;
+                stopConfetti();
+            }
+        } else {
+            showNextRankingRow();
+        }
+        
+        return;
+    }
+    
+    if (e.key === 'Escape') {
+        if (vittoriaAudio && !vittoriaAudio.paused) {
+            vittoriaAudio.pause();
+            vittoriaAudio.currentTime = 0;
+        }
+        stopConfetti();
+    }
+});
 
 // 7. FUNZIONE DI RESET COMPLETO (UTILIZZA FIREBASE)
 async function resetCompleto() {
@@ -395,12 +620,6 @@ async function resetCompleto() {
 
     if (!confirm("SEI SICURO? QUESTA È UN'OPERAZIONE DI ELIMINAZIONE PERMANENTE. I voti saranno cancellati da Firebase e la lista nomi azzerata.")) {
         return;
-    }
-    
-    // Rimuove il listener prima di ricaricare la pagina
-    if (keyListener) {
-        document.removeEventListener('keydown', keyListener);
-        keyListener = null;
     }
 
     document.body.style.cursor = 'wait';
