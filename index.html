@@ -213,8 +213,8 @@
             display: none;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-start;
-            padding-top: 50px;
+            justify-content: flex-end;
+            padding-bottom: 50px;
             z-index: 50;
         }
         
@@ -294,7 +294,7 @@
             width: 100%;
             height: 100%;
             background: rgba(0, 0, 0, 0.6);
-            z-index: 998;
+            z-index: 60;
             display: none;
             opacity: 0;
             transition: opacity 0.5s ease-in-out;
@@ -306,17 +306,18 @@
         }
 
         #podiumContainer {
-            position: relative;
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
-            height: 80vh;
+            height: 100vh;
             display: none;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            margin-top: 20px;
             opacity: 0;
             transition: opacity 0.5s ease-in-out;
-            z-index: 1000;
+            z-index: 70;
         }
         
         #podiumContainer.visible {
@@ -348,6 +349,7 @@
             transition: opacity 0.5s ease-in-out 0.3s;
             transform: translateX(-50%);
             line-height: 1.4;
+            z-index: 80;
         }
 
         .podium-place.visible {
@@ -394,7 +396,7 @@
             width: 100%;
             height: 100%;
             pointer-events: none; 
-            z-index: 1001; 
+            z-index: 75; 
             overflow: hidden;
             display: none; 
         }
@@ -422,7 +424,7 @@
         }
         
         #resetClassificaBtn {
-            position: absolute;
+            position: fixed;
             bottom: 85px;
             right: 25px;
             background-color: transparent;
@@ -435,6 +437,7 @@
             font-weight: 600;
             transition: background-color 0.3s;
             display: none;
+            z-index: 80;
         }
         #resetClassificaBtn:hover {
             background-color: rgba(239, 83, 80, 0.1);
@@ -489,14 +492,18 @@
     
     <div id="classifica-view">
         <ul id="listaClassifica"></ul>
-        <div id="podiumContainer">
-            <img id="podiumImage" src="podio.png" alt="Podio">
-            <div id="podiumPos1" class="podium-place"></div>
-            <div id="podiumPos2" class="podium-place"></div>
-            <div id="podiumPos3" class="podium-place"></div>
-        </div>
-        <button id="resetClassificaBtn" onclick="resetCompleto()">RESET</button>
     </div>
+    
+    <div id="podiumOverlay"></div>
+    
+    <div id="podiumContainer">
+        <img id="podiumImage" src="podio.png" alt="Podio">
+        <div id="podiumPos1" class="podium-place"></div>
+        <div id="podiumPos2" class="podium-place"></div>
+        <div id="podiumPos3" class="podium-place"></div>
+    </div>
+    
+    <button id="resetClassificaBtn" onclick="resetCompleto()">RESET</button>
     
     <audio id="vittoriaAudio" src="vittoria.mp3" loop preload="auto"></audio>
     
