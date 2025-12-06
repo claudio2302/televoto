@@ -10,6 +10,11 @@ const SESSION_ID = Date.now();
 const STORAGE_KEY_VISITED = 'televotoVisitedQr'; 
 let votiCorrenti = {}; 
 
+// NUOVE VARIABILI PER LA GESTIONE DELL'ANIMAZIONE
+let classificaFinale = []; // Contiene i gruppi di partecipanti ordinati
+let indiceClassificaCorrente = 0;
+let keyListener; // Variabile per tenere traccia del listener 'Enter'
+
 // NOTE: db e VOTI_COLLECTION sono resi globali in firebase_init.js
 
 // --- FUNZIONI DI UTILITÀ ---
@@ -120,9 +125,9 @@ function aggiornaInterfaccia() {
     }
 }
 
-// --- GESTIONE MODALI (omessa per brevità, codice invariato) ---
+// --- GESTIONE MODALI ---
 
-let enterListener; 
+let enterListenerModal; 
 
 function apriModaleInserimento() {
     const inputField = document.getElementById('modalNomeInput');
@@ -133,17 +138,17 @@ function apriModaleInserimento() {
     modal.style.display = 'flex';
     inputField.focus(); 
     
-    if (enterListener) {
-        inputField.removeEventListener('keydown', enterListener);
+    if (enterListenerModal) {
+        inputField.removeEventListener('keydown', enterListenerModal);
     }
     
-    enterListener = function handleEnter(e) {
+    enterListenerModal = function handleEnter(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             salvaNomeDaModale();
         }
     };
-    inputField.addEventListener('keydown', enterListener);
+    inputField.addEventListener('keydown', enterListenerModal);
 }
 
 function salvaNomeDaModale() {
@@ -152,7 +157,7 @@ function salvaNomeDaModale() {
     
     if (aggiungiPartecipante(nome)) {
         document.getElementById('inputModal').style.display = 'none';
-        inputField.removeEventListener('keydown', enterListener);
+        inputField.removeEventListener('keydown', enterListenerModal);
     }
 }
 
@@ -192,8 +197,8 @@ function chiudiModale(event, id) {
         
         if (id === 'inputModal') {
             const inputField = document.getElementById('modalNomeInput');
-            if (enterListener) {
-                 inputField.removeEventListener('keydown', enterListener);
+            if (enterListenerModal) {
+                 inputField.removeEventListener('keydown', enterListenerModal);
             }
         }
     }
@@ -217,7 +222,6 @@ function rimuoviPartecipante(nome) {
 // --- FUNZIONI DI CALCOLO E CLASSIFICA (UTILIZZA FIREBASE) ---
 
 async function calcolaMediaEVaiAllaClassifica() {
-    // Controllo robusto che il DB sia pronto
     if (!window.db) {
         alert("Il database non è stato ancora inizializzato. Attendi un istante e riprova. Se l'errore persiste, ricarica la pagina.");
         return;
@@ -229,7 +233,6 @@ async function calcolaMediaEVaiAllaClassifica() {
         const colRef = window.db.collection(window.VOTI_COLLECTION);
         const snapshot = await colRef.get();
         
-        let risultatiMedia = {};
         let votiRaw = {}; 
         
         for (const nome of Object.keys(partecipanti)) {
@@ -245,7 +248,9 @@ async function calcolaMediaEVaiAllaClassifica() {
                 votiRaw[nome].push(voto);
             }
         });
-        
+
+        // 1. Calcola la media per ogni partecipante
+        let risultatiMedia = {};
         for (const nome in votiRaw) {
             const voti = votiRaw[nome];
             const totaleVoti = voti.length;
@@ -258,7 +263,41 @@ async function calcolaMediaEVaiAllaClassifica() {
             }
         }
         
-        visualizzaClassifica(risultatiMedia);
+        // 2. Raggruppa i partecipanti per media (parimerito)
+        const gruppiPerMedia = {};
+        for (const nome in risultatiMedia) {
+            const media = risultatiMedia[nome];
+            if (!gruppiPerMedia[media]) {
+                gruppiPerMedia[media] = [];
+            }
+            gruppiPerMedia[media].push(nome);
+        }
+
+        // 3. Ordina le medie e crea la classifica finale (dalla media più alta a quella più bassa)
+        const medieOrdinate = Object.keys(gruppiPerMedia)
+            .map(media => parseFloat(media))
+            .sort((a, b) => b - a);
+
+        let rankCounter = 1;
+        classificaFinale = [];
+        
+        medieOrdinate.forEach(media => {
+            const nomi = gruppiPerMedia[media].sort(); // Ordina i nomi per coerenza
+            classificaFinale.push({
+                rank: rankCounter,
+                media: media.toFixed(2),
+                nomi: nomi
+            });
+            rankCounter += nomi.length;
+        });
+
+        // La classifica deve essere rivelata dall'ultimo al primo, quindi invertiamo l'array dei gruppi
+        classificaFinale.reverse(); 
+
+        // Resetta l'indice per l'animazione
+        indiceClassificaCorrente = 0; 
+
+        visualizzaClassificaAnimata();
         document.body.style.cursor = 'default';
 
     } catch (error) {
@@ -268,31 +307,77 @@ async function calcolaMediaEVaiAllaClassifica() {
     }
 }
 
-function visualizzaClassifica(risultatiMedia) {
+function visualizzaClassificaAnimata() {
     const classificaView = document.getElementById('classifica-view');
     const mainView = document.getElementById('main-view');
     const classificaBtn = document.getElementById('classificaBtn');
-    const listaClassifica = document.getElementById('listaClassifica');
     
-    listaClassifica.innerHTML = '';
-    
-    const classificaArray = Object.entries(risultatiMedia)
-        .sort(([, mediaA], [, mediaB]) => mediaB - mediaA);
-
-    classificaArray.forEach(([nome, media], index) => {
-        const li = document.createElement('li');
-        li.innerHTML = `
-            <span class="rank">${index + 1}.</span>
-            <span class="name">${nome}</span>
-            <span class="avg">${media.toFixed(2)}</span>
-        `;
-        listaClassifica.appendChild(li);
-    });
-
+    // 1. Nasconde la lista e i pulsanti (tranne il RESET)
     mainView.style.display = 'none';
     classificaBtn.style.display = 'none';
-    
     classificaView.style.display = 'flex';
+    
+    // 2. Aggiunge il listener per il tasto Invio (solo se non è già attivo)
+    if (!keyListener) {
+        keyListener = function handleKeydown(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Previene il comportamento predefinito
+                mostraProssimoElemento();
+            }
+        };
+        document.addEventListener('keydown', keyListener);
+    }
+    
+    // Mostra il primo elemento subito (l'ultimo in classifica)
+    if (indiceClassificaCorrente === 0) {
+        mostraProssimoElemento();
+    }
+}
+
+function mostraProssimoElemento() {
+    const listaClassifica = document.getElementById('listaClassifica');
+    const classificaView = document.getElementById('classifica-view');
+
+    if (indiceClassificaCorrente < classificaFinale.length) {
+        const item = classificaFinale[indiceClassificaCorrente];
+        
+        // Costruzione del container
+        const li = document.createElement('li');
+        li.className = 'classifica-item';
+        
+        // Costruisce la lista di nomi per il parimerito
+        const nomiHTML = item.nomi.map(nome => `<p>${nome}</p>`).join('');
+        
+        li.innerHTML = `
+            <span class="rank">${item.rank}.</span>
+            <div class="name-list">${nomiHTML}</div>
+            <span class="avg">${item.media}</span>
+        `;
+        
+        // Aggiunge il container in cima (grazie a flex-direction: column-reverse su #listaClassifica)
+        listaClassifica.prepend(li); 
+        
+        // Attiva l'animazione di scorrimento dopo un piccolo ritardo per permettere al DOM di renderizzare
+        setTimeout(() => {
+            li.classList.add('slide-in');
+            
+            // Scorrimento: se la vista è piena, scorre in modo che l'ultimo elemento sia visibile
+            if (listaClassifica.scrollHeight > classificaView.clientHeight) {
+                // Scorri in alto per rendere visibile l'ultimo elemento aggiunto (che è in cima)
+                classificaView.scrollTop = 0; 
+            }
+            
+        }, 50); 
+        
+        indiceClassificaCorrente++;
+        
+    } else if (indiceClassificaCorrente === classificaFinale.length) {
+        // Classifica completa
+        alert('Classifica completata! Premi RESET per ricominciare.');
+        // Rimuovi il listener una volta finita la classifica
+        document.removeEventListener('keydown', keyListener);
+        keyListener = null;
+    }
 }
 
 
@@ -305,6 +390,12 @@ async function resetCompleto() {
 
     if (!confirm("SEI SICURO? QUESTA È UN'OPERAZIONE DI ELIMINAZIONE PERMANENTE. I voti saranno cancellati da Firebase e la lista nomi azzerata.")) {
         return;
+    }
+    
+    // Rimuove il listener prima di ricaricare la pagina
+    if (keyListener) {
+        document.removeEventListener('keydown', keyListener);
+        keyListener = null;
     }
 
     document.body.style.cursor = 'wait';
