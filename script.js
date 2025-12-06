@@ -367,23 +367,10 @@ function mostraProssimoElemento() {
         setTimeout(() => {
             li.classList.add('slide-in');
             
-            // NUOVA LOGICA DI SCORRIMENTO
-            
-            // Calcola l'altezza dell'elemento appena aggiunto + il gap (12px da CSS)
-            const elementHeight = li.offsetHeight + 12; 
-            
-            // 1. Se la lista ha più di un elemento e il contenuto supera l'altezza della vista (overflow)
-            if (listaClassifica.scrollHeight > classificaView.clientHeight) {
-                // Scorri in basso (aumenta scrollTop) del valore dell'altezza del nuovo elemento.
-                // Questo crea l'effetto di far scorrere la lista verso il basso
-                // per lasciare visibile il nuovo elemento in cima.
-                classificaView.scrollTop += elementHeight; 
-            } 
-            // 2. Se è il primo elemento o la lista è piccola, assicuriamo che sia visibile in basso
-            // (giocando su justify-content: flex-end e scrollando al massimo inferiore)
-            else if (indiceClassificaCorrente === 0) {
-                classificaView.scrollTop = classificaView.scrollHeight; 
-            }
+            // LOGICA DI SCORRIMENTO MODIFICATA:
+            // Forziamo lo scroll in fondo al contenitore (scrollHeight), in modo che il nuovo elemento
+            // (che appare in basso grazie al CSS column-reverse) sia sempre visibile.
+            classificaView.scrollTop = classificaView.scrollHeight; 
             
         }, 50); 
         
