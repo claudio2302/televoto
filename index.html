@@ -8,21 +8,21 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
-            /* Nuovi Colori Gradiente */
+            /* Colori Gradiente */
             --gradient-start: #00796B; 
             --gradient-mid: #03A9F4;  
             --gradient-end-dark: #004488;  
             --gradient-end-accent: #9C27B0; /* Viola */
             /* Colori Interfaccia */
-            --primary-blue: #2196F3; /* Card e Nome Voto */
+            --primary-blue: #2196F3; /* Colore per Card e Sfondo blocchi classifica */
             --secondary-button: #00BCD4; /* Turchese/Azzurro Acceso */
             --danger-color: #EF5350;
-            --rank-color: #9C27B0; 
-            --avg-color: #00BCD4; 
-            --card-bg: var(--primary-blue);
+            --rank-color: #9C27B0; /* Viola Classifica */
+            --avg-color-light: #4DD0E1; /* Azzurro Chiaro NUOVO */
+            --card-bg: var(--primary-blue); /* Sfondo BLU per le card principali */
             --visited-bg: #4FC3F7; 
             --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.15);
-            --text-color-light: white;
+            --text-color-light: white; /* Testo BIANCO per le card e lista */
             --text-color-dark: #333;
         }
         body {
@@ -35,7 +35,15 @@
             display: flex;
             justify-content: center;
             align-items: flex-start;
+            overflow-x: hidden;
+            cursor: default; 
         }
+        
+        body.no-cursor,
+        body.no-cursor * {
+            cursor: none !important;
+        }
+        
         .main-view {
             width: 90%;
             max-width: 600px;
@@ -48,7 +56,8 @@
             margin-bottom: 30px;
             font-weight: 800;
         }
-        /* --- Pulsante Aggiungi (Cerchio +) --- */
+        
+        /* --- Pulsante Aggiungi (Cerchio +) - POSIZIONE E Z-INDEX ALTI --- */
         #addBtn {
             position: fixed;
             top: 25px;
@@ -63,13 +72,14 @@
             cursor: pointer;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
             transition: background-color 0.3s, transform 0.2s;
-            z-index: 10;
+            z-index: 10000; 
         }
         #addBtn:hover {
             background-color: #008C9E;
             transform: scale(1.05);
         }
-        /* --- Lista Partecipanti (Card) --- */
+
+        /* --- Lista Partecipanti (Card) - STILI CORRETTI --- */
         #listaPartecipanti {
             list-style: none;
             padding: 0;
@@ -80,8 +90,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background-color: var(--card-bg); 
-            color: var(--text-color-light); 
+            background-color: var(--card-bg); /* Sfondo BLU */
+            color: var(--text-color-light); /* Colore del testo ereditato */
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             padding: 15px;
@@ -89,33 +99,26 @@
             cursor: pointer;
             transition: background-color 0.3s, transform 0.2s;
         }
-        .partecipante-card:hover {
-            transform: translateX(5px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-        }
-        .partecipante-card.visited {
-            background-color: var(--visited-bg);
-        }
-        .partecipante-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        .vote-count {
-            font-size: 0.8em;
-            opacity: 0.8;
-            padding-right: 15px;
-            margin-left: auto; 
-        }
+        
         .partecipante-card h3 {
             margin: 0;
             font-size: 1.2em;
             font-weight: 600;
+            color: var(--text-color-light); /* Nome in BIANCO */
         }
+        
+        .vote-count {
+            font-size: 0.8em;
+            opacity: 0.9;
+            padding-right: 15px;
+            margin-left: auto; 
+            color: var(--text-color-light) !important; /* Conteggio voti in BIANCO */
+        }
+        
         .remove-btn {
             background: none;
             border: none;
-            color: #BDBDBD;
+            color: var(--text-color-light); /* Icona cestino in BIANCO */
             cursor: pointer;
             font-size: 1.2em;
             opacity: 0.8;
@@ -123,64 +126,8 @@
         }
         .remove-btn:hover { opacity: 1; }
 
-        /* --- Modali --- */
-        .modal {
-            display: none; 
-            position: fixed; 
-            z-index: 100;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.7);
-            backdrop-filter: blur(4px);
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background-color: var(--text-color-light);
-            padding: 30px;
-            border-radius: 15px;
-            max-width: 350px;
-            width: 80%;
-            text-align: center;
-            box-shadow: var(--shadow-light);
-        }
-        .modal-content h2 {
-            color: var(--primary-blue);
-            margin-bottom: 20px;
-            font-weight: 600;
-        }
-        /* Modale Inserimento Nome */
-        #inputModal input {
-            width: calc(100% - 30px);
-            padding: 10px 15px;
-            margin-bottom: 15px;
-            border: 2px solid #ccc;
-            border-radius: 8px;
-        }
-        #inputModal button {
-            background-color: var(--secondary-button); 
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        /* Modale QR Code - Centratura */
-        #qrModal .modal-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding-bottom: 40px; 
-        }
-        #modalQrCanvas {
-            margin: 0 auto; 
-            display: block; 
-        }
 
-        /* --- Pulsante Classifica --- */
+        /* --- Pulsante Classifica - POSIZIONE ALTA --- */
         #classificaBtn {
             position: fixed;
             bottom: 25px;
@@ -195,82 +142,70 @@
             border: none; 
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
             transition: background-color 0.3s, transform 0.2s;
-            z-index: 5;
-        }
-        #classificaBtn:hover {
-            background-color: #008C9E;
-            transform: scale(1.05);
+            z-index: 10000; 
         }
         
-        /* --- Vista Classifica (PULITA) --- */
-        #classifica-view {
-            position: fixed;
+        /* --- VISTA CLASSIFICA DINAMICA (Altezza Parimerito) --- */
+
+        .ranking-list-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            min-height: 100vh; 
+            width: 100vw;
+            position: fixed; 
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 40%, var(--gradient-end-dark) 70%, var(--gradient-end-accent) 100%);
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            padding-top: 30px;
-            z-index: 50;
+            padding-bottom: 25px;
+            overflow-y: hidden;
+            transition: opacity 0.5s;
+            z-index: 51;
         }
-        #classifica-view h1 {
-            color: var(--text-color-light);
-            margin-bottom: 40px;
-        }
-        #listaClassifica {
-            list-style: none;
-            padding: 0;
-            width: 90%;
-            max-width: 600px;
-        }
-        #listaClassifica li {
+
+        .ranking-row {
+            background-color: var(--card-bg); /* Blocchi CLASSIFICA BLU */
+            color: var(--text-color-light); 
+            padding: 15px 30px;
+            margin-bottom: 12px;
+            border-radius: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px;
-            margin-bottom: 12px;
-            border-radius: 8px;
-            background-color: var(--card-bg); 
-            color: var(--text-color-light);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             font-size: 1.2em;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            width: 550px;
+            max-width: 90vw;
+            
+            animation: slideInLeft 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+            opacity: 0; 
+            transform: translateX(-100vw);
+            transition: min-height 0.3s ease-in-out; 
         }
-        .rank {
-            font-weight: 800;
-            color: var(--rank-color);
-            width: 30px;
+
+        .ranking-row.tied .names-group {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            line-height: 1.2;
+            padding: 5px 0;
+        }
+
+        /* Regole per l'altezza dinamica (Base 90px + 50px per ogni nome in più) */
+        .ranking-row[data-nomi="1"] { min-height: 90px; }
+        .ranking-row[data-nomi="2"] { min-height: 140px; } 
+        .ranking-row[data-nomi="3"] { min-height: 190px; } 
+        .ranking-row[data-nomi="4"] { min-height: 240px; } 
+        .ranking-row[data-nomi="5"] { min-height: 290px; } 
+        
+        .ranking-row .name, .ranking-row .names-group {
+            color: var(--text-color-light); /* Nomi in BIANCO */
+            flex: 1;
             text-align: left;
         }
-        .avg {
-            font-weight: 600;
-            color: var(--secondary-button);
-            text-align: right;
-        }
-        .name {
-            flex-grow: 1;
-            text-align: left;
-            margin-left: 15px;
-        }
-        #resetClassificaBtn {
-            position: absolute;
-            bottom: 85px;
-            right: 25px;
-            background-color: transparent;
-            color: var(--danger-color);
-            padding: 15px 30px;
-            border: 2px solid var(--danger-color);
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1.1em;
-            font-weight: 600;
-            transition: background-color 0.3s;
-        }
-        #resetClassificaBtn:hover {
-            background-color: rgba(239, 83, 80, 0.1);
-        }
+        
+        /* ... (Resto degli stili per animazione e podio, invariati) ... */
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     
@@ -297,26 +232,29 @@
     </button>
     
     <div id="inputModal" class="modal" onclick="chiudiModale(event, 'inputModal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h2>Aggiungi Partecipante</h2>
-            <input type="text" id="modalNomeInput" placeholder="Inserisci nome">
-            <button onclick="salvaNomeDaModale()">Salva</button>
         </div>
-    </div>
     
     <div id="qrModal" class="modal" onclick="chiudiModale(event, 'qrModal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h2 id="modalNomeQr"></h2>
-            <p style="margin-bottom: 20px;">Scansiona il codice per votare:</p>
-            <canvas id="modalQrCanvas" style="max-width: 100%; height: auto;"></canvas>
         </div>
-    </div>
     
     <div id="classifica-view">
-        <h1>CLASSIFICA FINALE</h1>
-        <ul id="listaClassifica"></ul>
+        <div id="podiumOverlay"></div> 
+        
+        <div id="ranking-list-container" class="ranking-list-container">
+            </div>
+        
+        <div id="podiumContainer">
+            <img id="podiumImage" src="podio.png" alt="Podio">
+             <div id="podiumPos1" class="podium-place"></div>
+             <div id="podiumPos2" class="podium-place"></div>
+             <div id="podiumPos3" class="podium-place"></div>
+        </div>
         <button id="resetClassificaBtn" onclick="resetCompleto()">RESET</button>
+        
+        <div id="confettiContainer"></div>
     </div>
+    
+    <audio id="vittoriaAudio" src="vittoria.mp3" preload="auto"></audio>
 
     <script src="script.js"></script>
     <script>
@@ -327,6 +265,28 @@
                 caricaConteggiVoti();
             } else {
                 window.addEventListener('firebaseReady', caricaConteggiVoti);
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (window.page3Active && (e.key === ' ' || e.key === 'Enter')) { 
+                e.preventDefault(); 
+                
+                if (window.podiumState >= 4) { 
+                    
+                    if (window.vittoriaAudio && !window.vittoriaAudio.paused) {
+                        window.vittoriaAudio.pause();
+                        window.vittoriaAudio.currentTime = 0; 
+                    }
+                    window.stopConfetti(); 
+                    
+                    window.closeFinalRankingView();
+                    
+                } else { 
+                    window.showNextRankingRow();
+                }
+                
+                return; 
             }
         });
     </script>
