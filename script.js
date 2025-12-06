@@ -283,12 +283,17 @@ async function calcolaMediaEVaiAllaClassifica() {
         
         medieOrdinate.forEach(media => {
             const nomi = gruppiPerMedia[media].sort(); // Ordina i nomi per coerenza
+            
+            // Logica di Dense Ranking: il rankCounter avanza solo una volta per gruppo
             classificaFinale.push({
                 rank: rankCounter,
                 media: media.toFixed(2),
                 nomi: nomi
             });
-            rankCounter += nomi.length;
+            
+            // Il rankCounter avanza di 1 per il prossimo gruppo, 
+            // indipendentemente dal numero di persone in parimerito.
+            rankCounter++;
         });
 
         // La classifica deve essere rivelata dall'ultimo al primo, quindi invertiamo l'array dei gruppi
@@ -355,16 +360,29 @@ function mostraProssimoElemento() {
         `;
         
         // Aggiunge il container in cima (grazie a flex-direction: column-reverse su #listaClassifica)
+        // Questo fa sì che il nuovo elemento sia posizionato sopra il precedente (stacking bottom-up)
         listaClassifica.prepend(li); 
         
         // Attiva l'animazione di scorrimento dopo un piccolo ritardo per permettere al DOM di renderizzare
         setTimeout(() => {
             li.classList.add('slide-in');
             
-            // Scorrimento: se la vista è piena, scorre in modo che l'ultimo elemento sia visibile
+            // NUOVA LOGICA DI SCORRIMENTO
+            
+            // Calcola l'altezza dell'elemento appena aggiunto + il gap (12px da CSS)
+            const elementHeight = li.offsetHeight + 12; 
+            
+            // 1. Se la lista ha più di un elemento e il contenuto supera l'altezza della vista (overflow)
             if (listaClassifica.scrollHeight > classificaView.clientHeight) {
-                // Scorri in alto per rendere visibile l'ultimo elemento aggiunto (che è in cima)
-                classificaView.scrollTop = 0; 
+                // Scorri in basso (aumenta scrollTop) del valore dell'altezza del nuovo elemento.
+                // Questo crea l'effetto di far scorrere la lista verso il basso
+                // per lasciare visibile il nuovo elemento in cima.
+                classificaView.scrollTop += elementHeight; 
+            } 
+            // 2. Se è il primo elemento o la lista è piccola, assicuriamo che sia visibile in basso
+            // (giocando su justify-content: flex-end e scrollando al massimo inferiore)
+            else if (indiceClassificaCorrente === 0) {
+                classificaView.scrollTop = classificaView.scrollHeight; 
             }
             
         }, 50); 
