@@ -1,3 +1,4 @@
+<!--
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -519,6 +520,397 @@
             } else {
                 window.addEventListener('firebaseReady', caricaConteggiVoti);
             }
+        });
+    </script>
+</body>
+</html>
+-->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>LISTA CONCORRENTI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            /* Colori Gradiente */
+            --gradient-start: #00796B; 
+            --gradient-mid: #03A9F4;  
+            --gradient-end-dark: #004488;  
+            --gradient-end-accent: #9C27B0; /* Viola */
+            /* Colori Interfaccia */
+            --primary-blue: #2196F3; /* Card e Nome Voto */
+            --secondary-button: #00BCD4; /* Turchese/Azzurro Acceso */
+            --danger-color: #EF5350;
+            --rank-color: #9C27B0; /* Viola Classifica */
+            --avg-color-light: #4DD0E1; /* Azzurro Chiaro NUOVO */
+            --card-bg: var(--primary-blue);
+            --visited-bg: #4FC3F7; 
+            --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.15);
+            --text-color-light: white;
+            --text-color-dark: #333;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 40%, var(--gradient-end-dark) 70%, var(--gradient-end-accent) 100%);
+            color: var(--text-color-dark);
+            padding: 0;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            overflow-x: hidden;
+            /* Per catturare gli eventi mouse/tastiera in classifica */
+            cursor: default; 
+        }
+        
+        /* Nasconde il cursore durante le animazioni (come nel file d'esempio) */
+        body.no-cursor,
+        body.no-cursor * {
+            cursor: none !important;
+        }
+        
+        .main-view {
+            width: 90%;
+            max-width: 600px;
+            margin-top: 30px;
+            position: relative;
+        }
+        h1 {
+            color: var(--text-color-light); 
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 800;
+        }
+        /* --- Pulsanti di controllo principali (omessi per brevità) --- */
+
+        /* --- VISTA CLASSIFICA DINAMICA (Nuovi Stili) --- */
+        #classifica-view {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 40%, var(--gradient-end-dark) 70%, var(--gradient-end-accent) 100%);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 30px;
+            z-index: 50;
+        }
+
+        .ranking-list-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            min-height: 100vh; 
+            width: 100vw;
+            position: fixed; 
+            top: 0;
+            left: 0;
+            padding-bottom: 25px;
+            overflow-y: hidden;
+            transition: opacity 0.5s;
+        }
+        
+        .ranking-row {
+            background-color: var(--card-bg); 
+            color: var(--text-color-light); 
+            padding: 15px 30px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.2em;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            width: 550px;
+            max-width: 90vw;
+            
+            animation: slideInLeft 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+            opacity: 0; 
+            transform: translateX(-100vw);
+        }
+
+        .ranking-row.shown {
+             opacity: 1;
+             transform: translateX(0);
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-100vw);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .ranking-row.tied .names-group {
+            line-height: 1.4;
+        }
+
+        .ranking-pos {
+            font-weight: 800;
+            color: var(--rank-color);
+            width: 30px;
+            margin-right: 25px;
+            font-size: 1.5em;
+        }
+
+        .ranking-row .name, .ranking-row .names-group {
+            color: var(--text-color-light);
+            flex: 1;
+            text-align: left;
+        }
+
+        .ranking-row .score {
+            color: var(--avg-color-light);
+            font-size: 1.6em;
+            margin-left: 20px;
+            font-weight: 800;
+            
+            border: 2px solid white; 
+            border-radius: 5px;
+            padding: 5px 10px;
+        }
+
+        /* --- STILI PODIO --- */
+
+        #podiumContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            z-index: 1000;
+        }
+
+        #podiumImage {
+            display: block;
+            width: 95%;
+            max-width: 1400px;
+            height: auto;
+            max-height: 75vh;
+            object-fit: contain;
+            margin: 0 auto;
+        }
+
+        .podium-place {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 25px;
+            min-width: 200px;
+            box-sizing: border-box;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out 0.3s;
+            transform: translateX(-50%);
+            line-height: 1.4;
+        }
+
+
+        .podium-place.visible {
+            opacity: 1;
+        }
+
+        .podium-place .name, .podium-place .names-group {
+             display: block;
+             color: var(--text-color-dark);
+             font-size: 1.1em;
+             margin-bottom: 5px;
+             opacity: 0;
+             transition: opacity 0.5s ease-in-out 0.2s;
+             overflow-wrap: break-word;
+             word-wrap: break-word;
+             text-align: center;
+        }
+
+        .podium-place.show-name .name,
+        .podium-place.show-name .names-group {
+            opacity: 1;
+        }
+
+        .podium-place .score {
+             color: var(--avg-color-light); 
+             border: 2px solid var(--primary-blue); 
+             border-radius: 8px;
+             padding: 5px 10px;
+             background: rgba(255, 255, 255, 0.1); 
+             display: block;
+             margin-top: 5px;
+             font-size: 1.3em;
+        }
+
+        /* --- POSIZIONAMENTO PODIO (FISSO, COME DA ESEMPIO) --- */
+        #podiumPos1 { top: 10%; left: 50%; }
+        #podiumPos2 { top: 30%; left: 75%; }
+        #podiumPos3 { top: 35%; left: 25%; }
+        /* ------------------------------------------- */
+
+        #confettiContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; 
+            z-index: 10002; /* Deve essere sopra l'overlay */
+            overflow: hidden;
+            display: none; 
+        }
+        
+        #podiumOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        #podiumOverlay.active {
+            display: block;
+            opacity: 1;
+        }
+
+        #resetClassificaBtn {
+            position: absolute;
+            bottom: 85px;
+            right: 25px;
+            background-color: transparent;
+            color: var(--danger-color);
+            padding: 15px 30px;
+            border: 2px solid var(--danger-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: background-color 0.3s;
+            z-index: 10001;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    
+    <script src="firebase_init.js"></script> 
+    </head>
+<body>
+
+    <div class="main-view" id="main-view">
+        <h1>LISTA CONCORRENTI</h1>
+        
+        <div id="listaPartecipanti">
+            </div>
+    </div>
+    
+    <button id="addBtn" onclick="apriModaleInserimento()">
+        <i class="fa-solid fa-plus"></i>
+    </button>
+    
+    <button id="classificaBtn" onclick="calcolaMediaEVaiAllaClassifica()">
+        Vai alla Classifica
+    </button>
+    
+    <div id="inputModal" class="modal" onclick="chiudiModale(event, 'inputModal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h2>Aggiungi Partecipante</h2>
+            <input type="text" id="modalNomeInput" placeholder="Inserisci nome">
+            <button onclick="salvaNomeDaModale()">Salva</button>
+        </div>
+    </div>
+    
+    <div id="qrModal" class="modal" onclick="chiudiModale(event, 'qrModal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h2 id="modalNomeQr"></h2>
+            <p style="margin-bottom: 20px;">Scansiona il codice per votare:</p>
+            <canvas id="modalQrCanvas" style="max-width: 100%; height: auto;"></canvas>
+        </div>
+    </div>
+    
+    <div id="classifica-view">
+        <div id="podiumOverlay"></div> 
+        
+        <div id="ranking-list-container" class="ranking-list-container">
+            </div>
+        
+        <div id="podiumContainer">
+            <img id="podiumImage" src="podio.png" alt="Podio">
+             <div id="podiumPos1" class="podium-place"></div>
+             <div id="podiumPos2" class="podium-place"></div>
+             <div id="podiumPos3" class="podium-place"></div>
+        </div>
+        <button id="resetClassificaBtn" onclick="resetCompleto()">RESET</button>
+        
+        <div id="confettiContainer"></div>
+    </div>
+    
+    <audio id="vittoriaAudio" src="vittoria.mp3" preload="auto"></audio>
+
+    <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            caricaPartecipanti();
+            
+            // Attende l'inizializzazione di Firebase
+            if (window.db) {
+                caricaConteggiVoti();
+            } else {
+                window.addEventListener('firebaseReady', caricaConteggiVoti);
+            }
+        });
+
+        // ====================================================================
+        // GESTIONE EVENTI TASTIERA (ATTIVA LA RIVELAZIONE)
+        // ====================================================================
+
+        document.addEventListener('keydown', (e) => {
+            // Controlla se la classifica è attiva E si preme SPAZIO o INVIO
+            if (window.page3Active && (e.key === ' ' || e.key === 'Enter')) { 
+                e.preventDefault(); 
+                
+                // Stato 4 o superiore = Fine animazione/Rivelazione completa
+                if (window.podiumState >= 4) { 
+                    
+                    // Se l'audio vittoria è attivo, fermalo
+                    if (window.vittoriaAudio && !window.vittoriaAudio.paused) {
+                        window.vittoriaAudio.pause();
+                        window.vittoriaAudio.currentTime = 0; 
+                    }
+                    window.stopConfetti(); 
+                    
+                    // Chiudi la classifica e torna alla pagina principale
+                    window.closeFinalRankingView();
+                    
+                } else { 
+                    window.showNextRankingRow(); // Procede al prossimo blocco/stato
+                }
+                
+                return; 
+            }
+            // ... (altri controlli tastiera omessi per brevità) ...
         });
     </script>
 </body>
