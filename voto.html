@@ -1,3 +1,4 @@
+<!--
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -211,6 +212,284 @@
                 messaggioElemento.style.color = 'var(--success-color)';
                 
                 // Nasconde il blocco voto solo in modalità normale
+                if (!isTestMode) {
+                     document.getElementById('bloccoVoto').style.display = 'none';
+                } else {
+                     messaggioElemento.style.color = 'orange';
+                     messaggioElemento.textContent = "Voto registrato (Modalità Test). Puoi votare di nuovo."
+                }
+                
+            } catch (error) {
+                messaggioElemento.textContent = `Errore di connessione a Firebase. Riprova.`;
+                messaggioElemento.style.color = 'var(--error-color)';
+                console.error('Errore nell\'invio del voto:', error);
+            }
+        }
+    </script>
+</body>
+</html>
+-->
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Inserisci il tuo Voto</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gradient-start: #00796B;
+            --gradient-mid: #03A9F4;
+            --gradient-end-dark: #004488;
+            --gradient-end-accent: #9C27B0; 
+            --secondary-button: #00BCD4; 
+            --primary-blue: #2196F3;
+            --card-bg: #ffffff;
+            --success-color: var(--secondary-button); 
+            --error-color: #EF5350; 
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 40%, var(--gradient-end-dark) 80%, var(--gradient-end-accent) 100%);
+            color: #333;
+            text-align: center;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .voto-container {
+            display: none; /* Inizialmente nascosto */
+            background-color: var(--card-bg);
+            padding: 40px 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 90%;
+        }
+        #loader {
+            color: white;
+            font-size: 1.2em;
+        }
+        h1 {
+            color: var(--primary-blue);
+            font-weight: 800;
+            margin-bottom: 5px;
+            font-size: 1.8em;
+        }
+        h2 {
+            font-weight: 600;
+            margin-bottom: 25px;
+            color: #555;
+            font-size: 1.2em;
+        }
+        
+        /* STILE SELECT MENU A TENDINA */
+        select {
+            padding: 15px;
+            font-size: 1.5em;
+            width: 100%;
+            text-align: center;
+            text-align-last: center; /* Per centrare il testo nel dropdown su alcuni browser */
+            margin-bottom: 30px;
+            border: 3px solid #ccc;
+            border-radius: 10px;
+            background-color: #fff;
+            cursor: pointer;
+            transition: border-color 0.3s;
+            appearance: none; /* Rimuove lo stile default del browser */
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007CB2%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right .7em top 50%;
+            background-size: .65em auto;
+        }
+        select:focus {
+            border-color: var(--secondary-button);
+            outline: none;
+        }
+
+        button {
+            padding: 15px 40px;
+            font-size: 1.2em;
+            background-color: var(--secondary-button);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #008C9E;
+            transform: translateY(-2px);
+        }
+        #messaggio {
+            margin-top: 30px;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+    </style>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    
+    <script src="firebase_init.js"></script> 
+    </head>
+<body>
+    <div id="loader">Caricamento database...</div>
+
+    <div class="voto-container" id="voto-container">
+        <h1 id="nomePartecipante"></h1>
+        <div id="bloccoVoto" class="blocco-voto">
+            <h2>Seleziona il Voto</h2>
+            <select id="votoInput" required>
+                </select>
+            <button onclick="inviaVoto()">Conferma Voto</button>
+        </div>
+        <p id="messaggio" style="display:none;"></p>
+    </div>
+
+    <script>
+        let nomePartecipante = '';
+        let sessionId = '';
+        let isTestMode = false;
+        
+        function getVotoKey() {
+            return 'voto_eseguito_per_' + decodeURIComponent(nomePartecipante) + '_' + sessionId;
+        }
+
+        // --- FUNZIONE PER GENERARE I VOTI NELLA TENDINA ---
+        function generaOpzioniVoto() {
+            const select = document.getElementById('votoInput');
+            select.innerHTML = ''; // Pulisce opzioni esistenti
+
+            // Funzione helper per aggiungere opzioni
+            const addOption = (label, value) => {
+                const opt = document.createElement('option');
+                opt.value = value;
+                opt.textContent = label;
+                select.appendChild(opt);
+            };
+
+            // Generazione voti dal 10 allo 0 in ordine decrescente
+            // 10 è il massimo
+            addOption("10", "10");
+
+            // Loop dal 9 allo 0
+            for (let i = 9; i >= 0; i--) {
+                // Esempio con i=9:
+                
+                // 10- (vale 9.75) -> Matematica: (i+1) - 0.25 = i + 0.75
+                addOption((i + 1) + "-", (i + 0.75));
+
+                // 9 1/2 (vale 9.5)
+                addOption(i + " 1/2", (i + 0.5));
+
+                // 9+ (vale 9.25)
+                addOption(i + "+", (i + 0.25));
+
+                // 9 (vale 9.0)
+                addOption(i.toString(), i);
+            }
+        }
+
+        function initVotoPage() {
+            const loader = document.getElementById('loader');
+            const votoContainer = document.getElementById('voto-container');
+            const messaggioElemento = document.getElementById('messaggio');
+
+            if (!window.db) {
+                loader.textContent = "Errore Critico: Impossibile connettersi al database.";
+                return;
+            }
+            
+            // Genera la lista dei voti appena la pagina è pronta
+            generaOpzioniVoto();
+            
+            // --- INIZIALIZZAZIONE PARAMETRI E MOSTRA VISTA ---
+            const params = new URLSearchParams(window.location.search);
+            nomePartecipante = params.get('nome');
+            sessionId = params.get('session');
+            isTestMode = (params.get('test') === 'true');
+            
+            const nomeDecodificato = decodeURIComponent(nomePartecipante);
+            const bloccoVoto = document.getElementById('bloccoVoto');
+
+            loader.style.display = 'none';
+            votoContainer.style.display = 'block';
+
+            if (nomePartecipante && sessionId) {
+                document.getElementById('nomePartecipante').textContent = `${nomeDecodificato}`;
+                
+                if (!isTestMode && localStorage.getItem(getVotoKey()) === 'true') {
+                    messaggioElemento.textContent = `Hai già votato ${nomeDecodificato} in questa sessione!`;
+                    messaggioElemento.style.color = 'orange';
+                    messaggioElemento.style.display = 'block';
+                    bloccoVoto.style.display = 'none';
+                }
+            } else {
+                document.getElementById('nomePartecipante').textContent = 'Errore: Link di voto non valido.';
+                bloccoVoto.style.display = 'none';
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.db) {
+                initVotoPage();
+            } else {
+                window.addEventListener('firebaseReady', initVotoPage);
+            }
+        });
+
+
+        async function inviaVoto() {
+            const messaggioElemento = document.getElementById('messaggio');
+            
+            if (!window.db) {
+                messaggioElemento.textContent = "Errore di inizializzazione del database. Ricarica la pagina.";
+                messaggioElemento.style.color = 'var(--error-color)';
+                messaggioElemento.style.display = 'block';
+                return;
+            }
+
+            // !!! MODIFICA CRITICA: parseFloat invece di parseInt per accettare decimali !!!
+            const voto = parseFloat(document.getElementById('votoInput').value);
+            
+            if (isNaN(voto) || voto < 0 || voto > 10) {
+                alert('Voto non valido.');
+                return;
+            }
+
+            if (!isTestMode && localStorage.getItem(getVotoKey()) === 'true') {
+                messaggioElemento.textContent = `Hai già votato ${decodeURIComponent(nomePartecipante)} in questa sessione!`;
+                messaggioElemento.style.color = 'orange';
+                messaggioElemento.style.display = 'block';
+                document.getElementById('bloccoVoto').style.display = 'none';
+                return; 
+            }
+
+            messaggioElemento.textContent = "Invio del voto in corso...";
+            messaggioElemento.style.display = 'block';
+            
+            try {
+                await window.db.collection(window.VOTI_COLLECTION).add({
+                    nome: decodeURIComponent(nomePartecipante),
+                    voto: voto.toString(), // Salva come stringa, ma contiene il decimale (es. "6.75")
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                if (!isTestMode) {
+                     localStorage.setItem(getVotoKey(), 'true');
+                }
+                
+                messaggioElemento.textContent = "Voto registrato con successo! ✅";
+                messaggioElemento.style.color = 'var(--success-color)';
+                
                 if (!isTestMode) {
                      document.getElementById('bloccoVoto').style.display = 'none';
                 } else {
