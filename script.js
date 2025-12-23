@@ -1,3 +1,4 @@
+/*
 // VARIABILI GLOBALI
 let partecipanti = {};
 const STORAGE_KEY_NOMI = 'televotoNomiOnline';
@@ -578,4 +579,275 @@ async function resetCompleto() {
         console.error("Errore grave nel reset con Firebase:", error);
         alert(`ERRORE GRAVE DURANTE IL RESET. Voti NON azzerati. Controlla la console.`);
     }
+}
+*/
+
+// --- VARIABILI GLOBALI ---
+let partecipanti = {};
+const STORAGE_KEY_NOMI = 'televotoNomiOnline';
+const STORAGE_KEY_VISITED = 'televotoVisitedQr'; 
+let votiCorrenti = {}; 
+
+// Stato Classifica
+window.finalRankingIndex = 0;
+window.sortedFinalRanking = [];
+window.podiumState = 0; 
+window.page3Active = false; 
+
+// Nuove Variabili per Audio YouTube
+let ytPlayer;
+let canzoniVincitori = {};
+const vittoriaAudio = document.getElementById('vittoriaAudio');
+
+// --- 1. CARICAMENTO DATI ---
+
+// Carica canzoni dal file JSON
+async function caricaCanzoni() {
+    try {
+        const response = await fetch('canzoni.json');
+        if (response.ok) {
+            canzoniVincitori = await response.json();
+            console.log("Database canzoni YouTube caricato.");
+        }
+    } catch (e) {
+        console.warn("Nessun file canzoni.json trovato o errore nel caricamento. Userò audio default.");
+    }
+}
+caricaCanzoni();
+
+// Inizializzazione Player YouTube (chiamata automaticamente dall'API)
+window.onYouTubeIframeAPIReady = function() {
+    ytPlayer = new YT.Player('youtube-player', {
+        height: '0',
+        width: '0',
+        videoId: '',
+        playerVars: { 'autoplay': 0, 'controls': 0, 'disablekb': 1 },
+        events: {
+            'onReady': (event) => { console.log("Player YouTube pronto."); window.ytPlayer = ytPlayer; },
+            'onError': (e) => { console.error("Errore Player YouTube:", e); }
+        }
+    });
+};
+
+function capitalizeWords(str) {
+    if (!str) return str;
+    return str.toLowerCase().split(' ').map(word => {
+        return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+}
+
+function caricaPartecipanti() {
+    const raw = localStorage.getItem(STORAGE_KEY_NOMI);
+    if (raw) {
+        partecipanti = JSON.parse(raw);
+        renderPartecipanti();
+    }
+}
+
+function renderPartecipanti() {
+    const container = document.getElementById('listaPartecipanti');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const visited = JSON.parse(localStorage.getItem(STORAGE_KEY_VISITED) || "[]");
+
+    Object.keys(partecipanti).sort().forEach(nome => {
+        const count = votiCorrenti[nome] ? votiCorrenti[nome].count : 0;
+        const avg = votiCorrenti[nome] ? votiCorrenti[nome].avg : "0.00";
+
+        const card = document.createElement('div');
+        card.className = 'card' + (visited.includes(nome) ? ' visited' : '');
+        card.innerHTML = `
+            <div class="card-name">${nome}</div>
+            <div class="vote-info">
+                <i class="fas fa-star"></i> Media: <strong>${avg}</strong><br>
+                <i class="fas fa-vote-yea"></i> Voti: ${count}
+            </div>
+            <a href="voto.html?n=${encodeURIComponent(nome)}" class="btn-vota" onclick="markAsVisited('${nome}')">VOTA</a>
+        `;
+        container.appendChild(card);
+    });
+}
+
+window.markAsVisited = function(nome) {
+    const visited = JSON.parse(localStorage.getItem(STORAGE_KEY_VISITED) || "[]");
+    if (!visited.includes(nome)) {
+        visited.push(nome);
+        localStorage.setItem(STORAGE_KEY_VISITED, JSON.stringify(visited));
+    }
+}
+
+async function caricaConteggiVoti() {
+    if (!window.db) return;
+    try {
+        const snapshot = await window.db.collection(window.VOTI_COLLECTION).get();
+        const conteggi = {};
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const n = data.nome;
+            const v = parseFloat(data.voto) || 0;
+            if (!conteggi[n]) conteggi[n] = { sum: 0, count: 0 };
+            conteggi[n].sum += v;
+            conteggi[n].count += 1;
+        });
+        Object.keys(conteggi).forEach(n => {
+            votiCorrenti[n] = {
+                count: conteggi[n].count,
+                avg: (conteggi[n].sum / conteggi[n].count).toFixed(2)
+            };
+        });
+        renderPartecipanti();
+    } catch (e) { console.error("Errore caricamento voti:", e); }
+}
+
+// --- 2. LOGICA CLASSIFICA ---
+
+function parseYouTubeUrl(url) {
+    if (!url || !url.includes('youtube.com') && !url.includes('youtu.be')) return null;
+    try {
+        let videoId = '';
+        let startSeconds = 0;
+        if (url.includes('youtu.be/')) {
+            videoId = url.split('youtu.be/')[1].split(/[?#]/)[0];
+        } else {
+            const urlObj = new URL(url);
+            videoId = urlObj.searchParams.get('v');
+        }
+        const urlParams = new URLSearchParams(url.split('?')[1]);
+        if (urlParams.has('t')) {
+            startSeconds = parseInt(urlParams.get('t')) || 0;
+        }
+        return videoId ? { videoId, startSeconds } : null;
+    } catch (e) { return null; }
+}
+
+window.apriClassificaFinale = function() {
+    const arr = Object.keys(votiCorrenti).map(nome => ({
+        nome: nome,
+        avg: parseFloat(votiCorrenti[nome].avg)
+    })).sort((a, b) => b.avg - a.avg);
+
+    if (arr.length < 3) {
+        alert("Servono almeno 3 partecipanti con voti per il podio.");
+        return;
+    }
+
+    window.sortedFinalRanking = [];
+    let currentRank = 1;
+    for (let i = 0; i < arr.length; i++) {
+        if (i > 0 && arr[i].avg < arr[i-1].avg) currentRank = i + 1;
+        window.sortedFinalRanking.push({
+            rank: currentRank,
+            nomi: [arr[i].nome],
+            avg: arr[i].avg.toFixed(2)
+        });
+    }
+
+    // Raggruppa parimerito
+    const grouped = [];
+    window.sortedFinalRanking.forEach(item => {
+        const existing = grouped.find(g => g.rank === item.rank);
+        if (existing) existing.nomi.push(item.nomi[0]);
+        else grouped.push(item);
+    });
+    window.sortedFinalRanking = grouped;
+
+    document.getElementById('finalRankingOverlay').classList.add('active');
+    window.page3Active = true;
+    window.podiumState = 1; 
+    document.getElementById('rankingTransitionImg').style.display = 'block';
+}
+
+window.showNextRankingRow = function() {
+    const img = document.getElementById('rankingTransitionImg');
+    const g1 = window.sortedFinalRanking.find(g => g.rank === 1);
+    const g2 = window.sortedFinalRanking.find(g => g.rank === 2);
+    const g3 = window.sortedFinalRanking.find(g => g.rank === 3);
+
+    switch (window.podiumState) {
+        case 1: // Nascondi logo, mostra struttura podio
+            img.style.display = 'none';
+            window.podiumState = 2;
+            break;
+
+        case 2: // Rivela 3° Posto
+            if (g3) populatePodiumElement('podiumPos3', g3, true, true);
+            window.podiumState = 3;
+            break;
+
+        case 3: // Rivela 2° Posto
+            if (g2) populatePodiumElement('podiumPos2', g2, true, true);
+            window.podiumState = 4;
+            break;
+
+        case 4: // Rivela Vincitore + Audio/YouTube + Coriandoli
+            if (g1) {
+                populatePodiumElement('podiumPos1', g1, true, true);
+                window.startConfetti();
+                
+                setTimeout(() => {
+                    const nomeVincitore = g1.nomi[0];
+                    const linkYt = canzoniVincitori[nomeVincitore];
+                    const infoVideo = parseYouTubeUrl(linkYt);
+
+                    if (infoVideo && window.ytPlayer && typeof window.ytPlayer.loadVideoById === 'function') {
+                        console.log("Riproduzione da YouTube per " + nomeVincitore);
+                        window.ytPlayer.loadVideoById({
+                            videoId: infoVideo.videoId,
+                            startSeconds: infoVideo.startSeconds
+                        });
+                        window.ytPlayer.playVideo();
+                    } else {
+                        console.log("Nessun link YT o errore: riproduzione audio default.");
+                        if (vittoriaAudio) {
+                            vittoriaAudio.currentTime = 0;
+                            vittoriaAudio.play().catch(e => console.log("Errore riproduzione audio:", e));
+                        }
+                    }
+                }, 500);
+            }
+            window.podiumState = 5; 
+            break;
+    }
+}
+
+function populatePodiumElement(id, group, visible, showN) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.querySelector('.podium-name').textContent = group.nomi.join(' & ');
+    el.querySelector('.podium-score').textContent = group.avg;
+    if (visible) el.classList.add('visible');
+    if (showN) setTimeout(() => el.classList.add('show-name'), 100);
+}
+
+window.closeFinalRankingView = function() {
+    document.getElementById('finalRankingOverlay').classList.remove('active');
+    window.page3Active = false;
+    window.podiumState = 0;
+    // Reset stili podio
+    ['podiumPos1', 'podiumPos2', 'podiumPos3'].forEach(id => {
+        const el = document.getElementById(id);
+        el.classList.remove('visible', 'show-name');
+    });
+    window.stopConfetti();
+}
+
+// --- FUNZIONI CORIANDOLI (VUOTE) ---
+window.startConfetti = function() { /* Implementa se hai una libreria */ };
+window.stopConfetti = function() { /* Implementa se hai una libreria */ };
+
+// --- RESET COMPLETO ---
+async function resetCompleto() {
+    if (!window.db) return;
+    if (!confirm("ELIMINARE TUTTI I VOTI E I PARTECIPANTI?")) return;
+    try {
+        const snapshot = await window.db.collection(window.VOTI_COLLECTION).get();
+        const batch = window.db.batch();
+        snapshot.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        localStorage.removeItem(STORAGE_KEY_NOMI);
+        localStorage.removeItem(STORAGE_KEY_VISITED);
+        alert("Reset completato.");
+        location.reload();
+    } catch (e) { alert("Errore durante il reset."); }
 }
