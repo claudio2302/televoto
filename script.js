@@ -799,9 +799,7 @@ async function calcolaMediaEVaiAllaClassifica() {
         const colRef = window.db.collection(window.VOTI_COLLECTION);
         const snapshot = await colRef.get();
         
-        let risultatiMedia = {};
         let votiRaw = {}; 
-        
         for (const nome of Object.keys(partecipanti)) {
             votiRaw[nome] = [];
         }
@@ -810,7 +808,6 @@ async function calcolaMediaEVaiAllaClassifica() {
             const data = doc.data();
             const nome = data.nome;
             const voto = parseFloat(data.voto); 
-            
             if (votiRaw.hasOwnProperty(nome) && !isNaN(voto)) {
                 votiRaw[nome].push(voto);
             }
@@ -820,15 +817,12 @@ async function calcolaMediaEVaiAllaClassifica() {
         for (const nome in votiRaw) {
             const voti = votiRaw[nome];
             const totaleVoti = voti.length;
-            
             let media = 0;
             if (totaleVoti > 0) {
                 const somma = voti.reduce((acc, voto) => acc + voto, 0);
                 media = parseFloat((somma / totaleVoti).toFixed(2));
             }
-            
             pScores.push({ nome: nome, totale: media });
-            risultatiMedia[nome] = media;
         }
         
         pScores.sort((a, b) => b.totale - a.totale);
@@ -876,7 +870,6 @@ async function calcolaMediaEVaiAllaClassifica() {
         }
         
         window.sortedFinalRanking.reverse();
-        
         window.finalRankingIndex = 0;
         window.podiumState = 0;
         goToFinalRankingView();
@@ -885,8 +878,8 @@ async function calcolaMediaEVaiAllaClassifica() {
 
     } catch (error) {
         document.body.style.cursor = 'default';
-        console.error("Errore nel calcolo o nel recupero dei dati da Firebase:", error);
-        alert(`ERRORE: Impossibile calcolare la media e la classifica.`);
+        console.error("Errore nel calcolo:", error);
+        alert(`ERRORE: Impossibile calcolare la classifica.`);
     }
 }
 
@@ -925,7 +918,7 @@ window.closeFinalRankingView = function() {
     window.page3Active = false;
     window.finalRankingIndex = 0;
     window.podiumState = 0;
-    
+    window.stopConfetti();
     caricaConteggiVoti(); 
 };
 
@@ -950,7 +943,7 @@ window.showNextRankingRow = function() {
             if (window.sortedFinalRanking.length > 0) { 
                 rListContainer.style.opacity = '0'; 
                 
-                // MODIFICA: L'audio we_are_the_champion.mp3 parte qui, alla transizione verso il podio
+                // --- AVVIO AUDIO: we_are_the_champion_cut.mp3 parte qui (Transizione Podio) ---
                 if (vittoriaAudio) {
                     vittoriaAudio.currentTime = 0;
                     vittoriaAudio.play().catch(e => console.error("Errore play audio:", e));
@@ -960,11 +953,9 @@ window.showNextRankingRow = function() {
                     rListContainer.style.display = 'none';
                     pCont.style.display = 'flex'; 
                     podiumOverlay.classList.add('active'); 
-                    
                     void pCont.offsetWidth; 
                     pCont.classList.add('visible'); 
                     pCont.style.opacity = '1';
-                    
                     window.podiumState = 1; 
                 }, 500); 
             } else {
@@ -978,23 +969,15 @@ window.showNextRankingRow = function() {
         row.className = 'ranking-row'; 
         const pos = grp.posizione + '°'; 
         
-        let nameContent;
-        if (grp.nomi.length > 1) { 
-            row.classList.add('tied'); 
-            nameContent = `<div class="names-group">${grp.nomi.join('<br>')}</div>`;
-        } else {
-            nameContent = `<span class="name">${grp.nomi[0]}</span>`;
-        }
+        let nameContent = (grp.nomi.length > 1) 
+            ? `<div class="names-group">${grp.nomi.join('<br>')}</div>` 
+            : `<span class="name">${grp.nomi[0]}</span>`;
         
         row.innerHTML = `<span class="ranking-pos">${pos}</span>${nameContent}<span class="score">${grp.totale.toFixed(2)}</span>`; 
         rListContainer.insertBefore(row, rListContainer.firstChild); 
         void row.offsetWidth; 
         row.classList.add('shown');
-        
-        if (rListContainer.children.length > 5) {
-             rListContainer.scrollTop = 0;
-        }
-
+        if (rListContainer.children.length > 5) rListContainer.scrollTop = 0;
         window.finalRankingIndex++; 
         
     } else { 
@@ -1010,11 +993,14 @@ window.showNextRankingRow = function() {
                 if (g1) populatePodiumElement('podiumPos1', g1, false, true); 
                 break; 
                 
-            case 4: // RIVELA NOMI (2° e 1° CLASSIFICATO) + EFFETTI FINALI
+            case 4: // RIVELA NOMI (2° e 1° CLASSIFICATO) + CORIANDOLI
                 if (g2) populatePodiumElement('podiumPos2', g2, true, true); 
                 if (g1) populatePodiumElement('podiumPos1', g1, true, true); 
                 
-                // NOTA: I coriandoli partirebbero qui (se implementati), l'audio continua la sua esecuzione
+                // --- RIPRISTINO CORIANDOLI: L'animazione riparte qui come in origine ---
+                setTimeout(() => {
+                    window.startConfetti(); 
+                }, 500); 
                 break;
         } 
     } 
@@ -1023,54 +1009,35 @@ window.showNextRankingRow = function() {
 function populatePodiumElement(id, grp, showN = true, showS = true) { 
     const el = document.getElementById(id); 
     if (!el || !grp) return; 
-    
     el.classList.remove('show-name'); 
-    
     let nHTML = (grp.nomi.length > 1) 
         ? `<div class="names-group">${grp.nomi.join('<br>')}</div>` 
         : `<span class="name">${grp.nomi[0] || '&nbsp;'}</span>`; 
-        
     let sHTML = showS ? `<span class="score">${grp.totale.toFixed(2)}</span>` : `<span class="score">&nbsp;</span>`; 
-    
     el.innerHTML = nHTML + sHTML;
     void el.offsetWidth; 
-    
     if (!el.classList.contains('visible')) el.classList.add('visible'); 
     if (showN) setTimeout(() => el.classList.add('show-name'), 100); 
 }
 
-window.startConfetti = function() { /* FUNZIONE VUOTA */ }
-window.stopConfetti = function() { /* FUNZIONE VUOTA */ }
+// Assicurati di non modificare queste se sono definite esternamente (es. canvas-confetti)
+window.startConfetti = window.startConfetti || function() { console.log("Start Confetti"); };
+window.stopConfetti = window.stopConfetti || function() { console.log("Stop Confetti"); };
 
 async function resetCompleto() {
-    if (!window.db) {
-        alert("Il database non è inizializzato.");
-        return;
-    }
-
-    if (!confirm("SEI SICURO? QUESTA È UN'OPERAZIONE DI ELIMINAZIONE PERMANENTE.")) {
-        return;
-    }
-
+    if (!window.db || !confirm("SEI SICURO? QUESTA È UN'OPERAZIONE DI ELIMINAZIONE PERMANENTE.")) return;
     document.body.style.cursor = 'wait';
-
     try {
         const colRef = window.db.collection(window.VOTI_COLLECTION);
         const snapshot = await colRef.get();
         const batch = window.db.batch();
         snapshot.forEach((doc) => { batch.delete(doc.ref); });
-
         await batch.commit();
-
         localStorage.removeItem(STORAGE_KEY_NOMI);
         localStorage.removeItem(STORAGE_KEY_VISITED);
-        
-        alert("RESET COMPLETATO!");
         location.reload(); 
-
     } catch (error) {
         document.body.style.cursor = 'default';
-        console.error("Errore nel reset:", error);
-        alert(`ERRORE GRAVE DURANTE IL RESET.`);
+        alert(`ERRORE DURANTE IL RESET.`);
     }
 }
