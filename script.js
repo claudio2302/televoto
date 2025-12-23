@@ -593,12 +593,10 @@ const SESSION_ID = Date.now();
 const STORAGE_KEY_VISITED = 'televotoVisitedQr'; 
 let votiCorrenti = {}; 
 
-// NOTE: db e VOTI_COLLECTION sono resi globali in firebase_init.js
-
-// --- VARIABILI DI STATO CLASSIFICA (INTEGRATE) ---
+// --- VARIABILI DI STATO CLASSIFICA ---
 window.finalRankingIndex = 0;
 window.sortedFinalRanking = [];
-// 0=Lista; 1=Transizione Podio (Immagine); 2=Rivelazione 3°; 3=Rivelazione 1°/2° Voto; 4=Rivelazione Nomi + Effetti
+// 0=Lista; 1=Transizione Podio; 2=Rivelazione 3°; 3=Rivelazione 1°/2° Voto; 4=Rivelazione Nomi + Effetti
 window.podiumState = 0; 
 window.page3Active = false; 
 
@@ -613,29 +611,22 @@ function capitalizeWords(str) {
 
 async function caricaConteggiVoti() {
     if (!window.db) return;
-
     try {
         const snapshot = await window.db.collection(window.VOTI_COLLECTION).get();
-        
         const conteggi = {};
-        
         for (const nome of Object.keys(partecipanti)) {
             conteggi[nome] = 0;
         }
-
         snapshot.forEach(doc => {
             const data = doc.data();
-            const nome = data.nome;
-            if (conteggi.hasOwnProperty(nome)) {
-                conteggi[nome] += 1;
+            if (conteggi.hasOwnProperty(data.nome)) {
+                conteggi[data.nome] += 1;
             }
         });
-
         votiCorrenti = conteggi;
         aggiornaInterfaccia(); 
-
     } catch (error) {
-        console.error("Impossibile caricare i conteggi dei voti da Firebase:", error);
+        console.error("Errore voti:", error);
     }
 }
 
@@ -655,20 +646,15 @@ function salvaNomi() {
 
 function aggiungiPartecipante(nome) {
     const nomeCapitalizzato = capitalizeWords(nome.trim());
-
-    if (!nomeCapitalizzato) {
-        alert("Inserisci un nome valido.");
-        return false;
-    }
-    
-    if (nomeCapitalizzato && !partecipanti[nomeCapitalizzato]) {
+    if (!nomeCapitalizzato) { alert("Inserisci un nome."); return false; }
+    if (!partecipanti[nomeCapitalizzato]) {
         partecipanti[nomeCapitalizzato] = [];
         salvaNomi();
         votiCorrenti[nomeCapitalizzato] = 0; 
         aggiornaInterfaccia();
         return true;
-    } else if (partecipanti[nomeCapitalizzato]) {
-        alert('Nome già presente!');
+    } else {
+        alert('Già presente!');
         return false;
     }
 }
@@ -677,367 +663,227 @@ function aggiornaInterfaccia() {
     const listaDiv = document.getElementById('listaPartecipanti');
     if(!listaDiv) return;
     listaDiv.innerHTML = '';
-    
     const visited = JSON.parse(localStorage.getItem(STORAGE_KEY_VISITED) || '[]');
-
     for (const nome in partecipanti) {
-        const conteggio = votiCorrenti[nome] || 0; 
-        
         const card = document.createElement('div');
-        card.className = 'partecipante-card';
-        card.setAttribute('data-nome', nome);
+        card.className = 'partecipante-card' + (visited.includes(nome) ? ' visited' : '');
         card.onclick = () => apriModaleQr(nome);
-        
-        if (visited.includes(nome)) {
-            card.classList.add('visited');
-        }
-
-        card.innerHTML = `
-            <h3>${nome}</h3>
-            <div class="partecipante-info">
-                <span class="vote-count" style="color: white; font-weight: 600;">${conteggio} voti</span>
-                <button class="remove-btn" onclick="event.stopPropagation(); apriModaleConfermaElimina('${nome}')">
-                    <i class="fa-solid fa-trash-can"></i>
-                </button>
-            </div>
-        `;
+        card.innerHTML = `<h3>${nome}</h3><div class="partecipante-info"><span>${votiCorrenti[nome] || 0} voti</span><button class="remove-btn" onclick="event.stopPropagation(); rimuoviPartecipante('${nome}')"><i class="fa-solid fa-trash-can"></i></button></div>`;
         listaDiv.appendChild(card);
     }
 }
 
-let enterListener; 
-
 function apriModaleInserimento() {
-    const inputField = document.getElementById('modalNomeInput');
     const modal = document.getElementById('inputModal');
-    inputField.value = '';
+    document.getElementById('modalNomeInput').value = '';
     modal.style.display = 'flex';
-    inputField.focus(); 
-    if (enterListener) { inputField.removeEventListener('keydown', enterListener); }
-    enterListener = function handleEnter(e) { if (e.key === 'Enter') { e.preventDefault(); salvaNomeDaModale(); } };
-    inputField.addEventListener('keydown', enterListener);
+    document.getElementById('modalNomeInput').focus();
 }
 
 function salvaNomeDaModale() {
     const nome = document.getElementById('modalNomeInput').value;
-    const inputField = document.getElementById('modalNomeInput');
-    if (aggiungiPartecipante(nome)) {
-        document.getElementById('inputModal').style.display = 'none';
-        inputField.removeEventListener('keydown', enterListener);
-    }
+    if (aggiungiPartecipante(nome)) document.getElementById('inputModal').style.display = 'none';
 }
 
 function apriModaleQr(nome) {
     const modal = document.getElementById('qrModal');
-    const modalNome = document.getElementById('modalNomeQr');
-    const qrCanvas = document.getElementById('modalQrCanvas');
-    
+    document.getElementById('modalNomeQr').textContent = nome;
     let visited = JSON.parse(localStorage.getItem(STORAGE_KEY_VISITED) || '[]');
     if (!visited.includes(nome)) {
         visited.push(nome);
         localStorage.setItem(STORAGE_KEY_VISITED, JSON.stringify(visited));
-        const card = document.querySelector(`.partecipante-card[data-nome='${nome}']`);
-        if (card) card.classList.add('visited');
+        aggiornaInterfaccia();
     }
-
     const baseUrl = window.location.href.split('?')[0].replace(/index\.html$/, ''); 
     const urlVoto = `${baseUrl}voto.html?nome=${encodeURIComponent(nome)}&session=${SESSION_ID}&test=${IS_TEST_MODE}`;
-
-    modalNome.textContent = nome;
-
-    new QRious({
-        element: qrCanvas,
-        value: urlVoto,
-        size: 300,
-        padding: 10
-    });
-
+    new QRious({ element: document.getElementById('modalQrCanvas'), value: urlVoto, size: 300, padding: 10 });
     modal.style.display = 'flex';
 }
 
 function chiudiModale(event, id) {
-    const modal = document.getElementById(id);
-    if (event.target === modal) {
-        modal.style.display = 'none';
-        
-        if (id === 'inputModal') {
-            const inputField = document.getElementById('modalNomeInput');
-            if (enterListener) {
-                 inputField.removeEventListener('keydown', enterListener);
-            }
-        }
-    }
-}
-
-function apriModaleConfermaElimina(nome) {
-    if (confirm(`Sei sicuro di voler rimuovere ${nome}? Questo non cancella i voti passati dal database, ma non li conteggerà.`)) {
-        rimuoviPartecipante(nome);
-    }
+    if (event.target.id === id) document.getElementById(id).style.display = 'none';
 }
 
 function rimuoviPartecipante(nome) {
-    delete partecipanti[nome];
-    delete votiCorrenti[nome]; 
-    salvaNomi();
-    let visited = JSON.parse(localStorage.getItem(STORAGE_KEY_VISITED) || '[]');
-    localStorage.setItem(STORAGE_KEY_VISITED, JSON.stringify(visited.filter(n => n !== nome)));
-    aggiornaInterfaccia();
+    if (confirm(`Rimuovere ${nome}?`)) {
+        delete partecipanti[nome];
+        salvaNomi();
+        aggiornaInterfaccia();
+    }
 }
 
-
-// --- FUNZIONI DI CALCOLO E CLASSIFICA ---
+// --- LOGICA CLASSIFICA ---
 
 async function calcolaMediaEVaiAllaClassifica() {
-    if (!window.db) {
-        alert("Il database non è stato ancora inizializzato. Riprova tra un secondo.");
-        return;
-    }
-    
+    if (!window.db) return;
     document.body.style.cursor = 'wait';
-    
     try {
-        const colRef = window.db.collection(window.VOTI_COLLECTION);
-        const snapshot = await colRef.get();
-        
+        const snapshot = await window.db.collection(window.VOTI_COLLECTION).get();
         let votiRaw = {}; 
-        for (const nome of Object.keys(partecipanti)) {
-            votiRaw[nome] = [];
-        }
-
+        for (const nome of Object.keys(partecipanti)) votiRaw[nome] = [];
         snapshot.forEach(doc => {
             const data = doc.data();
-            const nome = data.nome;
-            const voto = parseFloat(data.voto); 
-            if (votiRaw.hasOwnProperty(nome) && !isNaN(voto)) {
-                votiRaw[nome].push(voto);
-            }
+            const v = parseFloat(data.voto); 
+            if (votiRaw.hasOwnProperty(data.nome) && !isNaN(v)) votiRaw[data.nome].push(v);
         });
-        
         let pScores = []; 
         for (const nome in votiRaw) {
-            const voti = votiRaw[nome];
-            const totaleVoti = voti.length;
-            let media = 0;
-            if (totaleVoti > 0) {
-                const somma = voti.reduce((acc, voto) => acc + voto, 0);
-                media = parseFloat((somma / totaleVoti).toFixed(2));
-            }
-            pScores.push({ nome: nome, totale: media });
+            const v = votiRaw[nome];
+            const media = v.length > 0 ? parseFloat((v.reduce((a, b) => a + b, 0) / v.length).toFixed(2)) : 0;
+            pScores.push({ nome, totale: media });
         }
-        
         pScores.sort((a, b) => b.totale - a.totale);
-
-        let finalParticipantScores = [];
-        let currentRank = 0;
-        let lastScore = -Infinity;
-        let tiedCount = 0;
-        pScores.forEach((p) => {
-            if (p.totale !== lastScore) {
-                currentRank += (tiedCount + 1);
-                lastScore = p.totale;
-                tiedCount = 0;
-            }
-            finalParticipantScores.push({ ...p, posizione: currentRank });
-        });
         
-        window.sortedFinalRanking = []; 
-        let currentGroup = [];
-        let currentScore = -Infinity;
-        let currentPosition = 0;
-
-        finalParticipantScores.forEach(p => {
-            if (p.totale !== currentScore) {
-                if (currentGroup.length > 0) {
-                    window.sortedFinalRanking.push({
-                        nomi: currentGroup.map(item => item.nome),
-                        totale: currentScore,
-                        posizione: currentPosition
-                    });
-                }
-                currentPosition = p.posizione;
-                currentGroup = [p];
-                currentScore = p.totale;
-            } else {
-                currentGroup.push(p);
-            }
+        // Calcolo posizioni e gruppi parimerito
+        window.sortedFinalRanking = [];
+        let currentRank = 0, lastScore = -1;
+        pScores.forEach((p, i) => {
+            if (p.totale !== lastScore) { currentRank = i + 1; lastScore = p.totale; }
+            let group = window.sortedFinalRanking.find(g => g.totale === p.totale);
+            if (group) group.nomi.push(p.nome);
+            else window.sortedFinalRanking.push({ nomi: [p.nome], totale: p.totale, posizione: currentRank });
         });
-        if (currentGroup.length > 0) {
-            window.sortedFinalRanking.push({
-                nomi: currentGroup.map(item => item.nome),
-                totale: currentScore,
-                posizione: currentPosition
-            });
-        }
-        
-        window.sortedFinalRanking.reverse();
-        window.finalRankingIndex = 0;
-        window.podiumState = 0;
+
+        window.sortedFinalRanking.reverse(); // Dal fondo al podio
+        window.finalRankingIndex = 0; window.podiumState = 0;
         goToFinalRankingView();
-        
         document.body.style.cursor = 'default';
-
-    } catch (error) {
-        document.body.style.cursor = 'default';
-        console.error("Errore nel calcolo:", error);
-        alert(`ERRORE: Impossibile calcolare la classifica.`);
-    }
+    } catch (e) { console.error(e); document.body.style.cursor = 'default'; }
 }
 
 function goToFinalRankingView() { 
     document.getElementById('main-view').style.display = 'none';
     document.getElementById('classificaBtn').style.display = 'none';
-    
-    const view = document.getElementById('classifica-view');
-    view.style.display = 'flex';
-    
-    const rListContainer = document.getElementById('ranking-list-container');
-    rListContainer.innerHTML = '';
-    rListContainer.style.opacity = '1';
-    rListContainer.style.display = 'flex'; 
-    
+    document.getElementById('classifica-view').style.display = 'flex';
+    document.getElementById('ranking-list-container').innerHTML = '';
+    document.getElementById('ranking-list-container').style.display = 'flex';
     document.getElementById('podiumContainer').style.display = 'none';
-    document.getElementById('podiumContainer').classList.remove('visible'); 
-    
     window.page3Active = true;
-    
-    document.getElementById('podiumPos1').innerHTML = '';
-    document.getElementById('podiumPos2').innerHTML = '';
-    document.getElementById('podiumPos3').innerHTML = '';
-    document.getElementById('podiumPos1').classList.remove('visible', 'show-name');
-    document.getElementById('podiumPos2').classList.remove('visible', 'show-name');
-    document.getElementById('podiumPos3').classList.remove('visible', 'show-name');
-    
-    document.getElementById('podiumOverlay').classList.remove('active');
-    window.stopConfetti(); 
 }
 
 window.closeFinalRankingView = function() {
+    const audio = document.getElementById('vittoriaAudio');
+    if (audio) { audio.pause(); audio.currentTime = 0; }
+    window.stopConfetti();
     document.getElementById('classifica-view').style.display = 'none';
     document.getElementById('main-view').style.display = 'block';
     document.getElementById('classificaBtn').style.display = 'block';
     window.page3Active = false;
-    window.finalRankingIndex = 0;
-    window.podiumState = 0;
-    window.stopConfetti();
-    caricaConteggiVoti(); 
 };
 
 window.showNextRankingRow = function() { 
     if (!window.page3Active) return; 
-    
     const rListContainer = document.getElementById('ranking-list-container');
     const pCont = document.getElementById('podiumContainer');
-    const podiumOverlay = document.getElementById('podiumOverlay');
-    const vittoriaAudio = document.getElementById('vittoriaAudio');
+    const audio = document.getElementById('vittoriaAudio');
 
     const g1 = window.sortedFinalRanking.find(g => g.posizione === 1);
     const g2 = window.sortedFinalRanking.find(g => g.posizione === 2);
     const g3 = window.sortedFinalRanking.find(g => g.posizione === 3);
 
     if (window.podiumState === 0) { 
-        const threshPosition = 3; 
-        
-        if (window.finalRankingIndex >= window.sortedFinalRanking.length || 
-            (window.sortedFinalRanking[window.finalRankingIndex]?.posizione <= threshPosition)) { 
+        if (window.finalRankingIndex >= window.sortedFinalRanking.length || window.sortedFinalRanking[window.finalRankingIndex]?.posizione <= 3) { 
+            rListContainer.style.opacity = '0'; 
             
-            if (window.sortedFinalRanking.length > 0) { 
-                rListContainer.style.opacity = '0'; 
-                
-                // --- AVVIO AUDIO: we_are_the_champion_cut.mp3 parte qui (Transizione Podio) ---
-                if (vittoriaAudio) {
-                    vittoriaAudio.currentTime = 0;
-                    vittoriaAudio.play().catch(e => console.error("Errore play audio:", e));
-                }
+            // --- AUDIO: Parte al passaggio dalla lista al podio ---
+            if (audio) { audio.currentTime = 0; audio.play().catch(e => console.log(e)); }
 
-                setTimeout(() => {
-                    rListContainer.style.display = 'none';
-                    pCont.style.display = 'flex'; 
-                    podiumOverlay.classList.add('active'); 
-                    void pCont.offsetWidth; 
-                    pCont.classList.add('visible'); 
-                    pCont.style.opacity = '1';
-                    window.podiumState = 1; 
-                }, 500); 
-            } else {
-                window.closeFinalRankingView();
-            }
+            setTimeout(() => {
+                rListContainer.style.display = 'none'; 
+                pCont.style.display = 'flex'; 
+                document.getElementById('podiumOverlay').classList.add('active');
+                pCont.classList.add('visible'); 
+                window.podiumState = 1; 
+            }, 500); 
             return; 
         } 
-        
         const grp = window.sortedFinalRanking[window.finalRankingIndex]; 
         const row = document.createElement('div'); 
         row.className = 'ranking-row'; 
-        const pos = grp.posizione + '°'; 
-        
-        let nameContent = (grp.nomi.length > 1) 
-            ? `<div class="names-group">${grp.nomi.join('<br>')}</div>` 
-            : `<span class="name">${grp.nomi[0]}</span>`;
-        
-        row.innerHTML = `<span class="ranking-pos">${pos}</span>${nameContent}<span class="score">${grp.totale.toFixed(2)}</span>`; 
+        row.innerHTML = `<span class="ranking-pos">${grp.posizione}°</span><span class="name">${grp.nomi.join('<br>')}</span><span class="score">${grp.totale.toFixed(2)}</span>`; 
         rListContainer.insertBefore(row, rListContainer.firstChild); 
-        void row.offsetWidth; 
-        row.classList.add('shown');
-        if (rListContainer.children.length > 5) rListContainer.scrollTop = 0;
+        setTimeout(() => row.classList.add('shown'), 10);
         window.finalRankingIndex++; 
-        
     } else { 
         window.podiumState++; 
-        
-        switch (window.podiumState) { 
-            case 2: // RIVELA 3° CLASSIFICATO
-                if (g3) populatePodiumElement('podiumPos3', g3, true, true); 
-                break; 
-                
-            case 3: // RIVELA 2° e 1° CLASSIFICATO (SOLO VOTO)
-                if (g2) populatePodiumElement('podiumPos2', g2, false, true); 
-                if (g1) populatePodiumElement('podiumPos1', g1, false, true); 
-                break; 
-                
-            case 4: // RIVELA NOMI (2° e 1° CLASSIFICATO) + CORIANDOLI
-                if (g2) populatePodiumElement('podiumPos2', g2, true, true); 
-                if (g1) populatePodiumElement('podiumPos1', g1, true, true); 
-                
-                // --- RIPRISTINO CORIANDOLI: L'animazione riparte qui come in origine ---
-                setTimeout(() => {
-                    window.startConfetti(); 
-                }, 500); 
-                break;
+        if (window.podiumState === 2 && g3) populatePodiumElement('podiumPos3', g3, true, true);
+        if (window.podiumState === 3) { 
+            if(g2) populatePodiumElement('podiumPos2', g2, false, true); 
+            if(g1) populatePodiumElement('podiumPos1', g1, false, true); 
+        }
+        if (window.podiumState === 4) { 
+            if(g2) populatePodiumElement('podiumPos2', g2, true, true); 
+            if(g1) populatePodiumElement('podiumPos1', g1, true, true); 
+            
+            // --- CORIANDOLI: Partono quando compaiono i nomi del 1° e 2° ---
+            setTimeout(() => window.startConfetti(), 500); 
         } 
     } 
 };
 
-function populatePodiumElement(id, grp, showN = true, showS = true) { 
-    const el = document.getElementById(id); 
-    if (!el || !grp) return; 
-    el.classList.remove('show-name'); 
-    let nHTML = (grp.nomi.length > 1) 
-        ? `<div class="names-group">${grp.nomi.join('<br>')}</div>` 
-        : `<span class="name">${grp.nomi[0] || '&nbsp;'}</span>`; 
-    let sHTML = showS ? `<span class="score">${grp.totale.toFixed(2)}</span>` : `<span class="score">&nbsp;</span>`; 
-    el.innerHTML = nHTML + sHTML;
-    void el.offsetWidth; 
-    if (!el.classList.contains('visible')) el.classList.add('visible'); 
+function populatePodiumElement(id, grp, showN, showS) { 
+    const el = document.getElementById(id);
+    el.innerHTML = `<span class="name">${grp.nomi.join('<br>')}</span>` + (showS ? `<span class="score">${grp.totale.toFixed(2)}</span>` : '');
+    el.classList.add('visible'); 
     if (showN) setTimeout(() => el.classList.add('show-name'), 100); 
 }
 
-// Assicurati di non modificare queste se sono definite esternamente (es. canvas-confetti)
-window.startConfetti = window.startConfetti || function() { console.log("Start Confetti"); };
-window.stopConfetti = window.stopConfetti || function() { console.log("Stop Confetti"); };
+// --- FUNZIONI CORIANDOLI ORIGINALI ---
+
+window.startConfetti = function() {
+    const confettiContainer = document.getElementById('confettiContainer');
+    if (!confettiContainer) return;
+    window.stopConfetti(); 
+    confettiContainer.style.display = 'block';
+
+    const colors = ['#f093fb', '#f5576c', '#667eea', '#764ba2', '#fffb8f', '#ffffff'];
+
+    const createPiece = () => {
+        if (!window.page3Active || window.podiumState < 4) { 
+            window.stopConfetti(); 
+            return;
+        }
+
+        const piece = document.createElement('div');
+        piece.classList.add('confetti-piece');
+        piece.style.left = `${Math.random() * 100}vw`;
+        piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        const duration = Math.random() * 3 + 4; 
+        piece.style.animationDuration = `${duration}s`;
+        const size = Math.random() * 8 + 6;
+        piece.style.width = `${size}px`;
+        piece.style.height = `${size * 1.5}px`;
+        piece.style.transform = `rotateZ(${Math.random() * 360}deg)`;
+
+        confettiContainer.appendChild(piece);
+
+        setTimeout(() => { piece.remove(); }, duration * 1000 + 500); 
+    };
+
+    window.confettiTimer = setInterval(createPiece, 50); 
+}
+
+window.stopConfetti = function() {
+    const confettiContainer = document.getElementById('confettiContainer');
+    if (window.confettiTimer) {
+        clearInterval(window.confettiTimer); 
+        window.confettiTimer = null;
+    }
+    if (confettiContainer) {
+         setTimeout(() => {
+             if (confettiContainer && !window.confettiTimer) { 
+                  confettiContainer.innerHTML = ''; 
+                  confettiContainer.style.display = 'none'; 
+             }
+         }, 7000); 
+    }
+}
 
 async function resetCompleto() {
-    if (!window.db || !confirm("SEI SICURO? QUESTA È UN'OPERAZIONE DI ELIMINAZIONE PERMANENTE.")) return;
-    document.body.style.cursor = 'wait';
-    try {
-        const colRef = window.db.collection(window.VOTI_COLLECTION);
-        const snapshot = await colRef.get();
-        const batch = window.db.batch();
-        snapshot.forEach((doc) => { batch.delete(doc.ref); });
-        await batch.commit();
-        localStorage.removeItem(STORAGE_KEY_NOMI);
-        localStorage.removeItem(STORAGE_KEY_VISITED);
-        location.reload(); 
-    } catch (error) {
-        document.body.style.cursor = 'default';
-        alert(`ERRORE DURANTE IL RESET.`);
-    }
+    if (!confirm("RESET TOTALE?")) return;
+    const snap = await window.db.collection(window.VOTI_COLLECTION).get();
+    const batch = window.db.batch();
+    snap.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    localStorage.clear(); location.reload();
 }
