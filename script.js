@@ -581,14 +581,10 @@ async function resetCompleto() {
     }
 }
 */
-// VARIABILI GLOBALI
+// --- VARIABILI GLOBALI ---
 let partecipanti = {};
 const STORAGE_KEY_NOMI = 'televotoNomiOnline';
-
-// Variabile booleana per la modalità test
 const IS_TEST_MODE = false; 
-
-// Variabile per l'ID di sessione
 const SESSION_ID = Date.now(); 
 const STORAGE_KEY_VISITED = 'televotoVisitedQr'; 
 let votiCorrenti = {}; 
@@ -599,6 +595,7 @@ window.sortedFinalRanking = [];
 // 0=Lista; 1=Transizione Podio; 2=Rivelazione 3°; 3=Rivelazione 1°/2° Voto; 4=Rivelazione Nomi + Effetti
 window.podiumState = 0; 
 window.page3Active = false; 
+window.confettiTimer = null; 
 
 // --- FUNZIONI DI UTILITÀ ---
 
@@ -626,7 +623,7 @@ async function caricaConteggiVoti() {
         votiCorrenti = conteggi;
         aggiornaInterfaccia(); 
     } catch (error) {
-        console.error("Errore voti:", error);
+        console.error("Errore caricamento voti:", error);
     }
 }
 
@@ -734,7 +731,6 @@ async function calcolaMediaEVaiAllaClassifica() {
         }
         pScores.sort((a, b) => b.totale - a.totale);
         
-        // Calcolo posizioni e gruppi parimerito
         window.sortedFinalRanking = [];
         let currentRank = 0, lastScore = -1;
         pScores.forEach((p, i) => {
@@ -744,8 +740,9 @@ async function calcolaMediaEVaiAllaClassifica() {
             else window.sortedFinalRanking.push({ nomi: [p.nome], totale: p.totale, posizione: currentRank });
         });
 
-        window.sortedFinalRanking.reverse(); // Dal fondo al podio
-        window.finalRankingIndex = 0; window.podiumState = 0;
+        window.sortedFinalRanking.reverse(); 
+        window.finalRankingIndex = 0; 
+        window.podiumState = 0;
         goToFinalRankingView();
         document.body.style.cursor = 'default';
     } catch (e) { console.error(e); document.body.style.cursor = 'default'; }
@@ -756,9 +753,20 @@ function goToFinalRankingView() {
     document.getElementById('classificaBtn').style.display = 'none';
     document.getElementById('classifica-view').style.display = 'flex';
     document.getElementById('ranking-list-container').innerHTML = '';
+    document.getElementById('ranking-list-container').style.opacity = '1';
     document.getElementById('ranking-list-container').style.display = 'flex';
     document.getElementById('podiumContainer').style.display = 'none';
+    document.getElementById('podiumContainer').classList.remove('visible');
+    document.getElementById('podiumOverlay').classList.remove('active');
+    
+    // Reset podio
+    ['podiumPos1', 'podiumPos2', 'podiumPos3'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) { el.innerHTML = ''; el.classList.remove('visible', 'show-name'); }
+    });
+
     window.page3Active = true;
+    window.stopConfetti();
 }
 
 window.closeFinalRankingView = function() {
@@ -769,6 +777,7 @@ window.closeFinalRankingView = function() {
     document.getElementById('main-view').style.display = 'block';
     document.getElementById('classificaBtn').style.display = 'block';
     window.page3Active = false;
+    caricaConteggiVoti();
 };
 
 window.showNextRankingRow = function() { 
@@ -781,22 +790,29 @@ window.showNextRankingRow = function() {
     const g2 = window.sortedFinalRanking.find(g => g.posizione === 2);
     const g3 = window.sortedFinalRanking.find(g => g.posizione === 3);
 
+    // --- FASE LISTA (Stato 0) ---
     if (window.podiumState === 0) { 
-        if (window.finalRankingIndex >= window.sortedFinalRanking.length || window.sortedFinalRanking[window.finalRankingIndex]?.posizione <= 3) { 
+        if (window.finalRankingIndex >= window.sortedFinalRanking.length || (window.sortedFinalRanking[window.finalRankingIndex]?.posizione <= 3)) { 
+            // TRANSIZIONE AL PODIO
             rListContainer.style.opacity = '0'; 
             
-            // --- AUDIO: Parte al passaggio dalla lista al podio ---
-            if (audio) { audio.currentTime = 0; audio.play().catch(e => console.log(e)); }
+            // --- AUDIO: Parte quando si decide di mostrare il podio ---
+            if (audio) { 
+                audio.currentTime = 0; 
+                audio.play().catch(e => console.log("Errore Audio:", e)); 
+            }
 
             setTimeout(() => {
                 rListContainer.style.display = 'none'; 
                 pCont.style.display = 'flex'; 
                 document.getElementById('podiumOverlay').classList.add('active');
+                void pCont.offsetWidth;
                 pCont.classList.add('visible'); 
                 window.podiumState = 1; 
             }, 500); 
             return; 
         } 
+
         const grp = window.sortedFinalRanking[window.finalRankingIndex]; 
         const row = document.createElement('div'); 
         row.className = 'ranking-row'; 
@@ -804,31 +820,48 @@ window.showNextRankingRow = function() {
         rListContainer.insertBefore(row, rListContainer.firstChild); 
         setTimeout(() => row.classList.add('shown'), 10);
         window.finalRankingIndex++; 
+
     } else { 
+        // --- FASE PODIO (Stato 1+) ---
         window.podiumState++; 
-        if (window.podiumState === 2 && g3) populatePodiumElement('podiumPos3', g3, true, true);
-        if (window.podiumState === 3) { 
-            if(g2) populatePodiumElement('podiumPos2', g2, false, true); 
-            if(g1) populatePodiumElement('podiumPos1', g1, false, true); 
+        
+        switch(window.podiumState) {
+            case 2: // RIVELA 3° POSTO
+                if (g3) populatePodiumElement('podiumPos3', g3, true, true);
+                break;
+            case 3: // RIVELA SOLO VOTI 1° E 2°
+                if (g2) populatePodiumElement('podiumPos2', g2, false, true); 
+                if (g1) populatePodiumElement('podiumPos1', g1, false, true); 
+                break;
+            case 4: // RIVELA NOMI 1° E 2° + CORIANDOLI
+                if (g2) populatePodiumElement('podiumPos2', g2, true, true); 
+                if (g1) populatePodiumElement('podiumPos1', g1, true, true); 
+                
+                // --- CORIANDOLI: Partono ora che i vincitori sono svelati ---
+                setTimeout(() => window.startConfetti(), 500); 
+                break;
         }
-        if (window.podiumState === 4) { 
-            if(g2) populatePodiumElement('podiumPos2', g2, true, true); 
-            if(g1) populatePodiumElement('podiumPos1', g1, true, true); 
-            
-            // --- CORIANDOLI: Partono quando compaiono i nomi del 1° e 2° ---
-            setTimeout(() => window.startConfetti(), 500); 
-        } 
     } 
 };
 
 function populatePodiumElement(id, grp, showN, showS) { 
     const el = document.getElementById(id);
-    el.innerHTML = `<span class="name">${grp.nomi.join('<br>')}</span>` + (showS ? `<span class="score">${grp.totale.toFixed(2)}</span>` : '');
+    if (!el) return;
+    
+    const nameHTML = `<span class="name">${grp.nomi.join('<br>')}</span>`;
+    const scoreHTML = showS ? `<span class="score">${grp.totale.toFixed(2)}</span>` : '';
+    
+    el.innerHTML = nameHTML + scoreHTML;
     el.classList.add('visible'); 
-    if (showN) setTimeout(() => el.classList.add('show-name'), 100); 
+    
+    if (showN) {
+        setTimeout(() => el.classList.add('show-name'), 100);
+    } else {
+        el.classList.remove('show-name');
+    }
 }
 
-// --- FUNZIONI CORIANDOLI ORIGINALI ---
+// --- GESTIONE CORIANDOLI ---
 
 window.startConfetti = function() {
     const confettiContainer = document.getElementById('confettiContainer');
@@ -856,7 +889,6 @@ window.startConfetti = function() {
         piece.style.transform = `rotateZ(${Math.random() * 360}deg)`;
 
         confettiContainer.appendChild(piece);
-
         setTimeout(() => { piece.remove(); }, duration * 1000 + 500); 
     };
 
@@ -870,20 +902,26 @@ window.stopConfetti = function() {
         window.confettiTimer = null;
     }
     if (confettiContainer) {
-         setTimeout(() => {
-             if (confettiContainer && !window.confettiTimer) { 
-                  confettiContainer.innerHTML = ''; 
-                  confettiContainer.style.display = 'none'; 
-             }
-         }, 7000); 
+        setTimeout(() => {
+            if (confettiContainer && !window.confettiTimer) { 
+                confettiContainer.innerHTML = ''; 
+                confettiContainer.style.display = 'none'; 
+            }
+        }, 5000); 
     }
 }
 
+// --- RESET ---
 async function resetCompleto() {
-    if (!confirm("RESET TOTALE?")) return;
-    const snap = await window.db.collection(window.VOTI_COLLECTION).get();
-    const batch = window.db.batch();
-    snap.forEach(d => batch.delete(d.ref));
-    await batch.commit();
-    localStorage.clear(); location.reload();
+    if (!confirm("ATTENZIONE: Questo cancellerà tutti i voti dal database e i nomi locali. Procedere?")) return;
+    try {
+        const snap = await window.db.collection(window.VOTI_COLLECTION).get();
+        const batch = window.db.batch();
+        snap.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        localStorage.clear(); 
+        location.reload();
+    } catch (e) {
+        alert("Errore durante il reset.");
+    }
 }
