@@ -379,520 +379,6 @@
         #podiumPos2 { top: 30%; left: 75%; }
         #podiumPos3 { top: 35%; left: 25%; }
         
-        /* Rimosso #confettiContainer CSS */
-        
-        #podiumOverlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            z-index: 1000;
-            display: none;
-            opacity: 0;
-            transition: opacity 0.5s ease-in-out;
-        }
-        #podiumOverlay.active {
-            display: block;
-            opacity: 1;
-        }
-
-        #resetClassificaBtn {
-            position: absolute;
-            bottom: 85px;
-            right: 25px;
-            background-color: transparent;
-            color: var(--danger-color);
-            padding: 15px 30px;
-            border: 2px solid var(--danger-color);
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1.1em;
-            font-weight: 600;
-            transition: background-color 0.3s;
-            z-index: 10001;
-        }
-    </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-    
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-    
-    <script src="firebase_init.js"></script> 
-    </head>
-<body>
-
-    <div class="main-view" id="main-view">
-        <h1>LISTA CONCORRENTI</h1>
-        
-        <div id="listaPartecipanti">
-            </div>
-    </div>
-    
-    <button id="addBtn" onclick="apriModaleInserimento()">
-        <i class="fa-solid fa-plus"></i>
-    </button>
-    
-    <button id="classificaBtn" onclick="calcolaMediaEVaiAllaClassifica()">
-        Vai alla Classifica
-    </button>
-    
-    <div id="inputModal" class="modal" onclick="chiudiModale(event, 'inputModal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h2>Aggiungi Partecipante</h2>
-            <input type="text" id="modalNomeInput" placeholder="Inserisci nome">
-            <button onclick="salvaNomeDaModale()">Salva</button>
-        </div>
-    </div>
-    
-    <div id="qrModal" class="modal" onclick="chiudiModale(event, 'qrModal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h2 id="modalNomeQr"></h2>
-            <p style="margin-bottom: 20px;">Scansiona il codice per votare:</p>
-            <canvas id="modalQrCanvas" style="max-width: 100%; height: auto;"></canvas>
-        </div>
-    </div>
-    
-    <div id="classifica-view">
-        <div id="podiumOverlay"></div> 
-        
-        <div id="ranking-list-container" class="ranking-list-container">
-            </div>
-        
-        <div id="podiumContainer">
-            <img id="podiumImage" src="podio.png" alt="Podio">
-             <div id="podiumPos1" class="podium-place"></div>
-             <div id="podiumPos2" class="podium-place"></div>
-             <div id="podiumPos3" class="podium-place"></div>
-        </div>
-        <button id="resetClassificaBtn" onclick="resetCompleto()">RESET</button>
-        
-        </div>
-    
-    <audio id="vittoriaAudio" src="vittoria.mp3" preload="auto"></audio>
-
-    <script src="script.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            caricaPartecipanti();
-            
-            if (window.db) {
-                caricaConteggiVoti();
-            } else {
-                window.addEventListener('firebaseReady', caricaConteggiVoti);
-            }
-        });
-
-        // ====================================================================
-        // GESTIONE EVENTI TASTIERA (ATTIVA LA RIVELAZIONE)
-        // ====================================================================
-
-        document.addEventListener('keydown', (e) => {
-            if (window.page3Active && (e.key === ' ' || e.key === 'Enter')) { 
-                e.preventDefault(); 
-                
-                if (window.podiumState >= 4) { 
-                    
-                    if (window.vittoriaAudio && !window.vittoriaAudio.paused) {
-                        window.vittoriaAudio.pause();
-                        window.vittoriaAudio.currentTime = 0; 
-                    }
-                    // Rimosso stopConfetti()
-                    
-                    window.closeFinalRankingView();
-                    
-                } else { 
-                    window.showNextRankingRow();
-                }
-                
-                return; 
-            }
-        });
-    </script>
-</body>
-</html>
--->
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <title>LISTA CONCORRENTI</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
-        :root {
-            /* Colori Gradiente */
-            --gradient-start: #00796B; 
-            --gradient-mid: #03A9F4;  
-            --gradient-end-dark: #004488;  
-            --gradient-end-accent: #9C27B0; /* Viola */
-            /* Colori Interfaccia */
-            --primary-blue: #2196F3; /* Card e Nome Voto */
-            --secondary-button: #00BCD4; /* Turchese/Azzurro Acceso */
-            --danger-color: #EF5350;
-            --rank-color: #9C27B0; /* Viola Classifica */
-            --avg-color-light: #4DD0E1; /* Azzurro Chiaro NUOVO */
-            --card-bg: var(--primary-blue);
-            --visited-bg: #4FC3F7; 
-            --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.15);
-            --text-color-light: white;
-            --text-color-dark: #333;
-        }
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 40%, var(--gradient-end-dark) 70%, var(--gradient-end-accent) 100%);
-            color: var(--text-color-dark);
-            padding: 0;
-            margin: 0;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            overflow-x: hidden;
-            cursor: default; 
-        }
-        body.no-cursor,
-        body.no-cursor * {
-            cursor: none !important;
-        }
-        
-        .main-view {
-            width: 90%;
-            max-width: 600px;
-            margin-top: 30px;
-            position: relative;
-        }
-        h1 {
-            color: var(--text-color-light); 
-            text-align: center;
-            margin-bottom: 30px;
-            font-weight: 800;
-        }
-        /* --- Pulsante Aggiungi (Cerchio +) --- */
-        #addBtn {
-            position: fixed;
-            top: 25px;
-            right: 25px;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background-color: var(--secondary-button); 
-            color: white;
-            border: none;
-            font-size: 1.5em;
-            cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            transition: background-color 0.3s, transform 0.2s;
-            z-index: 10;
-        }
-        #addBtn:hover {
-            background-color: #008C9E;
-            transform: scale(1.05);
-        }
-        /* --- Lista Partecipanti (Card) --- */
-        #listaPartecipanti {
-            list-style: none;
-            padding: 0;
-            max-height: 75vh;
-            overflow-y: auto;
-        }
-        .partecipante-card {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: var(--card-bg); 
-            color: var(--text-color-light); 
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            padding: 15px;
-            margin-bottom: 12px;
-            cursor: pointer;
-            transition: background-color 0.3s, transform 0.2s;
-        }
-        .partecipante-card:hover {
-            transform: translateX(5px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-        }
-        .partecipante-card.visited {
-            background-color: var(--visited-bg);
-        }
-        .partecipante-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        .vote-count {
-            font-size: 0.8em;
-            opacity: 0.8;
-            padding-right: 15px;
-            margin-left: auto; 
-        }
-        .partecipante-card h3 {
-            margin: 0;
-            font-size: 1.2em;
-            font-weight: 600;
-        }
-        .remove-btn {
-            background: none;
-            border: none;
-            color: #BDBDBD;
-            cursor: pointer;
-            font-size: 1.2em;
-            opacity: 0.8;
-            transition: opacity 0.3s;
-        }
-        .remove-btn:hover { opacity: 1; }
-
-        /* --- Modali --- */
-        .modal {
-            display: none; 
-            position: fixed; 
-            z-index: 100;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.7);
-            backdrop-filter: blur(4px);
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background-color: var(--text-color-light);
-            padding: 30px;
-            border-radius: 15px;
-            max-width: 350px;
-            width: 80%;
-            text-align: center;
-            box-shadow: var(--shadow-light);
-        }
-        .modal-content h2 {
-            color: var(--primary-blue);
-            margin-bottom: 20px;
-            font-weight: 600;
-        }
-        /* Modale Inserimento Nome */
-        #inputModal input {
-            width: calc(100% - 30px);
-            padding: 10px 15px;
-            margin-bottom: 15px;
-            border: 2px solid #ccc;
-            border-radius: 8px;
-        }
-        #inputModal button {
-            background-color: var(--secondary-button); 
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        /* Modale QR Code - Centratura */
-        #qrModal .modal-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding-bottom: 40px; 
-        }
-        #modalQrCanvas {
-            margin: 0 auto; 
-            display: block; 
-        }
-
-        /* --- Pulsante Classifica --- */
-        #classificaBtn {
-            position: fixed;
-            bottom: 25px;
-            right: 25px;
-            background-color: var(--secondary-button);
-            color: white;
-            padding: 15px 30px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1.1em;
-            font-weight: 600;
-            border: none; 
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            transition: background-color 0.3s, transform 0.2s;
-            z-index: 5;
-        }
-        #classificaBtn:hover {
-            background-color: #008C9E;
-            transform: scale(1.05);
-        }
-        
-        /* --- VISTA CLASSIFICA DINAMICA (Stili Integrati dalla Logica) --- */
-        #classifica-view {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 40%, var(--gradient-end-dark) 70%, var(--gradient-end-accent) 100%);
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            padding-top: 30px;
-            z-index: 50;
-        }
-
-        .ranking-list-container {
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            align-items: center;
-            min-height: 100vh; 
-            width: 100vw;
-            position: fixed; 
-            top: 0;
-            left: 0;
-            padding-bottom: 25px;
-            overflow-y: hidden;
-            transition: opacity 0.5s;
-        }
-        
-        .ranking-row {
-            background-color: var(--card-bg); 
-            color: var(--text-color-light); 
-            padding: 15px 30px;
-            margin-bottom: 12px;
-            border-radius: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 1.2em;
-            font-weight: 600;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            width: 550px;
-            max-width: 90vw;
-            
-            animation: slideInLeft 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-            opacity: 0; 
-            transform: translateX(-100vw);
-        }
-
-        .ranking-row.shown {
-             opacity: 1;
-             transform: translateX(0);
-        }
-
-        @keyframes slideInLeft {
-            from {
-                opacity: 0;
-                transform: translateX(-100vw);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-        
-        .ranking-row.tied .names-group {
-            line-height: 1.4;
-        }
-
-        .ranking-pos {
-            font-weight: 800;
-            color: var(--rank-color);
-            width: 30px;
-            margin-right: 25px;
-            font-size: 1.5em;
-        }
-
-        .ranking-row .name, .ranking-row .names-group {
-            color: var(--text-color-light);
-            flex: 1;
-            text-align: left;
-        }
-
-        .ranking-row .score {
-            color: var(--avg-color-light);
-            font-size: 1.6em;
-            margin-left: 20px;
-            font-weight: 800;
-            
-            border: 2px solid white; 
-            border-radius: 5px;
-            padding: 5px 10px;
-        }
-
-        /* --- STILI PODIO (per la visualizzazione finale) --- */
-        #podiumContainer {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            opacity: 0;
-            transition: opacity 0.5s ease-in-out;
-            z-index: 1000;
-        }
-
-        #podiumImage {
-            display: block;
-            width: 95%;
-            max-width: 1400px;
-            height: auto;
-            max-height: 75vh;
-            object-fit: contain;
-            margin: 0 auto;
-        }
-
-        .podium-place {
-            position: absolute;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 15px 25px;
-            min-width: 200px;
-            box-sizing: border-box;
-            border-radius: 10px;
-            font-size: 1.2em;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            text-align: center;
-            opacity: 0;
-            transition: opacity 0.5s ease-in-out 0.3s;
-            transform: translateX(-50%);
-            line-height: 1.4;
-        }
-        .podium-place.visible {
-            opacity: 1;
-        }
-        .podium-place .name, .podium-place .names-group {
-             display: block;
-             color: var(--text-color-dark);
-             font-size: 1.1em;
-             margin-bottom: 5px;
-             opacity: 0;
-             transition: opacity 0.5s ease-in-out 0.2s;
-             overflow-wrap: break-word;
-             word-wrap: break-word;
-             text-align: center;
-        }
-        .podium-place.show-name .name,
-        .podium-place.show-name .names-group {
-            opacity: 1;
-        }
-        .podium-place .score {
-             color: var(--avg-color-light); 
-             border: 2px solid var(--primary-blue); 
-             border-radius: 8px;
-             padding: 5px 10px;
-             background: rgba(255, 255, 255, 0.1); 
-             display: block;
-             margin-top: 5px;
-             font-size: 1.3em;
-        }
-        #podiumPos1 { top: 10%; left: 50%; }
-        #podiumPos2 { top: 30%; left: 75%; }
-        #podiumPos3 { top: 35%; left: 25%; }
-        
         /* --- STILI CORIANDOLI (AGGIUNTI) --- */
         #confettiContainer {
             position: fixed;
@@ -1055,6 +541,271 @@
                     window.showNextRankingRow(); // Procede al prossimo blocco/stato
                 }
                 
+                return; 
+            }
+        });
+    </script>
+</body>
+</html>
+-->
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>LISTA CONCORRENTI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            /* Colori Gradiente */
+            --gradient-start: #00796B; 
+            --gradient-mid: #03A9F4;  
+            --gradient-end-dark: #004488;  
+            --gradient-end-accent: #9C27B0; /* Viola */
+            /* Colori Interfaccia */
+            --primary-blue: #2196F3; /* Card e Nome Voto */
+            --secondary-button: #00BCD4; /* Turchese/Azzurro Acceso */
+            --danger-color: #EF5350;
+            --rank-color: #9C27B0; /* Viola Classifica */
+            --avg-color-light: #4DD0E1; /* Azzurro Chiaro NUOVO */
+            --card-bg: var(--primary-blue);
+            --visited-bg: #4FC3F7; 
+            --shadow-light: rgba(0,0,0,0.2);
+            --shadow-heavy: rgba(0,0,0,0.4);
+        }
+
+        /* --- STILI BASE --- */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-mid) 40%, var(--gradient-end-dark) 80%, var(--gradient-end-accent) 100%);
+            background-attachment: fixed;
+            color: #fff;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        h1 { margin-bottom: 20px; font-weight: 800; text-shadow: 2px 2px 4px var(--shadow-heavy); font-size: 2.5rem; text-align: center; }
+
+        /* --- CONTAINER LISTA --- */
+        #listaPartecipanti {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+            padding: 10px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 8px 15px var(--shadow-light);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+            position: relative;
+            min-height: 180px;
+            text-align: center;
+        }
+
+        .card.visited { background-color: var(--visited-bg); opacity: 0.9; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 12px 20px var(--shadow-heavy); }
+
+        .card-name { font-size: 1.4rem; font-weight: 600; margin-bottom: 10px; color: #fff; }
+
+        .vote-info { font-size: 0.95rem; margin-bottom: 15px; background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px; font-weight: 400; }
+
+        .btn-vota {
+            background-color: var(--secondary-button);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn-vota:hover { background-color: #0097A7; transform: scale(1.05); }
+
+        /* --- OVERLAY CLASSIFICA --- */
+        #finalRankingOverlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, #2c3e50 0%, #000000 100%);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 40px 20px;
+            overflow-y: auto;
+        }
+
+        #finalRankingOverlay.active { display: flex; }
+
+        /* Contenitore Podio */
+        .podium-container {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            height: 450px;
+            margin-top: 50px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .podium-step {
+            width: 200px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.2);
+            border-bottom: none;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 20px 10px;
+            position: relative;
+            transition: height 1s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.5s ease;
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .podium-step.visible { opacity: 1; visibility: visible; }
+
+        .step-3 { height: 150px; order: 1; border-color: #cd7f32; box-shadow: 0 0 20px rgba(205,127,50,0.3); }
+        .step-1 { height: 280px; order: 2; border-color: #ffd700; box-shadow: 0 0 30px rgba(255,215,0,0.4); width: 250px; }
+        .step-2 { height: 200px; order: 3; border-color: #c0c0c0; box-shadow: 0 0 20px rgba(192,192,192,0.3); }
+
+        .podium-rank { font-size: 3rem; font-weight: 800; margin-bottom: 10px; line-height: 1; }
+        .step-1 .podium-rank { color: #ffd700; font-size: 4.5rem; }
+        .step-2 .podium-rank { color: #c0c0c0; }
+        .step-3 .podium-rank { color: #cd7f32; }
+
+        .podium-name { font-size: 1.3rem; font-weight: 600; text-align: center; opacity: 0; transition: opacity 0.5s ease; }
+        .podium-score { font-size: 1.1rem; color: #4DD0E1; margin-top: 5px; opacity: 0; transition: opacity 0.5s ease; }
+
+        .podium-step.show-name .podium-name, 
+        .podium-step.show-name .podium-score { opacity: 1; }
+
+        /* Immagine Transizione */
+        #rankingTransitionImg {
+            position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            max-width: 80%; max-height: 80%;
+            z-index: 1001;
+            display: none;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.05); } 100% { transform: translate(-50%, -50%) scale(1); } }
+
+        /* --- BOTTONI ADMIN --- */
+        .admin-controls { margin-top: 40px; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
+        .btn-admin { padding: 12px 25px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; transition: 0.3s; font-size: 0.9rem; }
+        .btn-ranking { background: var(--rank-color); color: white; }
+        .btn-reset { background: var(--danger-color); color: white; }
+
+        /* Utility */
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <h1><i class="fas fa-users"></i> PARTECIPANTI</h1>
+
+    <div id="listaPartecipanti">
+        </div>
+
+    <div id="finalRankingOverlay">
+        <h1 id="rankingTitle" style="color: #ffd700; margin-top: 20px;">CLASSIFICA FINALE</h1>
+        
+        <img id="rankingTransitionImg" src="logo_podio.png" alt="Podio">
+
+        <div class="podium-container">
+            <div id="podiumPos3" class="podium-step step-3">
+                <div class="podium-rank">3°</div>
+                <div class="podium-name">???</div>
+                <div class="podium-score">0.00</div>
+            </div>
+            <div id="podiumPos1" class="podium-step step-1">
+                <div class="podium-rank">1°</div>
+                <div class="podium-name">???</div>
+                <div class="podium-score">0.00</div>
+            </div>
+            <div id="podiumPos2" class="podium-step step-2">
+                <div class="podium-rank">2°</div>
+                <div class="podium-name">???</div>
+                <div class="podium-score">0.00</div>
+            </div>
+        </div>
+
+        <p style="color: #aaa; margin-top: 40px;">Premi [INVIO] o [SPAZIO] per procedere</p>
+    </div>
+
+    <div class="admin-controls">
+        <button class="btn-admin btn-ranking" onclick="apriClassificaFinale()">VAI ALLA CLASSIFICA</button>
+        <button class="btn-admin btn-reset" onclick="resetCompleto()">RESET</button>
+    </div>
+    
+    <audio id="vittoriaAudio" src="vittoria.mp3" preload="auto"></audio>
+
+    <div id="yt-player-container" style="position:fixed; top:-1000px; left:-1000px; pointer-events:none;">
+        <div id="youtube-player"></div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase_init.js"></script>
+
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            caricaPartecipanti();
+            
+            if (window.db) {
+                caricaConteggiVoti();
+            } else {
+                window.addEventListener('firebaseReady', caricaConteggiVoti);
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (window.page3Active && (e.key === ' ' || e.key === 'Enter')) { 
+                e.preventDefault(); 
+                
+                if (window.podiumState >= 4) { 
+                    // Ferma audio standard
+                    if (window.vittoriaAudio && !window.vittoriaAudio.paused) {
+                        window.vittoriaAudio.pause();
+                        window.vittoriaAudio.currentTime = 0; 
+                    }
+                    // AGGIUNTA: Ferma YouTube se attivo
+                    if (window.ytPlayer && window.ytPlayer.stopVideo) {
+                        window.ytPlayer.stopVideo();
+                    }
+                    
+                    window.closeFinalRankingView();
+                } else { 
+                    window.showNextRankingRow();
+                }
                 return; 
             }
         });
